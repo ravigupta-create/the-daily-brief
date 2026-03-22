@@ -4,23 +4,42 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Daily Brief</title>
+  <meta name="description" content="Your personal news dashboard — curated, clean, and free.">
+  <meta name="theme-color" content="#1a1a1a">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 </head>
 <body>
+  <!-- Skip to content for accessibility -->
+  <a href="#main-content" class="skip-link">Skip to content</a>
+
   <!-- Top utility bar -->
   <div class="utility-bar">
     <div class="utility-inner">
       <div class="date-display" id="date-display"></div>
+      <div class="utility-center">
+        <div class="auto-update-indicator" id="auto-update-indicator" title="Auto-refreshes every 15 minutes">
+          <span class="pulse-dot"></span>
+          <span>Live</span>
+        </div>
+        <span class="last-updated" id="last-updated"></span>
+      </div>
       <div class="utility-right">
-        <div class="weather-mini" id="weather-mini" title="Click for weather details">
+        <div class="weather-mini" id="weather-mini" title="Weather">
           <span id="weather-icon-mini">--</span>
           <span id="weather-temp-mini">--</span>
         </div>
-        <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">
+        <button class="icon-btn" id="font-decrease" title="Decrease font size">A-</button>
+        <button class="icon-btn" id="font-increase" title="Increase font size">A+</button>
+        <button class="icon-btn" id="view-toggle" title="Toggle view mode">
+          <span id="view-icon">&#9638;</span>
+        </button>
+        <button class="icon-btn" id="theme-toggle" title="Toggle dark mode">
           <span id="theme-icon">&#9790;</span>
         </button>
+        <button class="icon-btn" id="refresh-btn" title="Refresh now">&#8635;</button>
       </div>
     </div>
   </div>
@@ -45,29 +64,77 @@
   </div>
 
   <!-- Navigation -->
-  <nav class="main-nav">
+  <nav class="main-nav" id="main-nav">
     <div class="nav-inner">
-      <button class="nav-btn active" data-category="top">Top Stories</button>
-      <button class="nav-btn" data-category="world">World</button>
-      <button class="nav-btn" data-category="politics">Politics</button>
-      <button class="nav-btn" data-category="science">Science</button>
-      <button class="nav-btn" data-category="technology">Technology</button>
-      <button class="nav-btn" data-category="business">Business</button>
-      <button class="nav-btn" data-category="health">Health</button>
-      <button class="nav-btn" data-category="opinion">Opinion</button>
+      <div class="nav-categories">
+        <button class="nav-btn active" data-category="top">Top Stories</button>
+        <button class="nav-btn" data-category="world">World</button>
+        <button class="nav-btn" data-category="politics">Politics</button>
+        <button class="nav-btn" data-category="science">Science</button>
+        <button class="nav-btn" data-category="technology">Technology</button>
+        <button class="nav-btn" data-category="business">Business</button>
+        <button class="nav-btn" data-category="health">Health</button>
+        <button class="nav-btn" data-category="arts">Arts</button>
+        <button class="nav-btn" data-category="opinion">Opinion</button>
+        <button class="nav-btn" data-category="climate">Climate</button>
+      </div>
     </div>
   </nav>
 
-  <!-- Search bar -->
-  <div class="search-section">
-    <div class="search-inner">
-      <input type="text" id="search-input" class="search-input" placeholder="Search articles...">
-      <button id="search-clear" class="search-clear" style="display:none;">&times;</button>
+  <!-- Filters bar -->
+  <div class="filters-bar">
+    <div class="filters-inner">
+      <!-- Time range -->
+      <div class="filter-group">
+        <label class="filter-label">Time Range:</label>
+        <div class="filter-pills" id="time-pills">
+          <button class="pill active" data-range="today">Today</button>
+          <button class="pill" data-range="yesterday">Yesterday</button>
+          <button class="pill" data-range="this-week">This Week</button>
+          <button class="pill" data-range="last-week">Last Week</button>
+          <button class="pill" data-range="this-month">This Month</button>
+          <button class="pill" data-range="all">All Time</button>
+        </div>
+      </div>
+      <!-- Sort -->
+      <div class="filter-group">
+        <label class="filter-label">Sort:</label>
+        <select class="filter-select" id="sort-select">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="source">By Source</option>
+        </select>
+      </div>
+      <!-- Search -->
+      <div class="filter-group search-group">
+        <div class="search-wrap">
+          <span class="search-icon">&#128269;</span>
+          <input type="text" id="search-input" class="search-input" placeholder="Search articles..." aria-label="Search articles">
+          <button id="search-clear" class="search-clear" style="display:none;" aria-label="Clear search">&times;</button>
+        </div>
+      </div>
+      <!-- Source filter -->
+      <div class="filter-group">
+        <select class="filter-select" id="source-filter">
+          <option value="all">All Sources</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="stats-bar" id="stats-bar">
+    <div class="stats-inner">
+      <span class="stat-item" id="article-count">0 articles</span>
+      <span class="stat-divider">|</span>
+      <span class="stat-item" id="source-count">0 sources</span>
+      <span class="stat-divider">|</span>
+      <span class="stat-item" id="range-label">Today</span>
     </div>
   </div>
 
   <!-- Main content -->
-  <main class="main-content">
+  <main class="main-content" id="main-content">
     <!-- Loading state -->
     <div class="loading-state" id="loading-state">
       <div class="loading-spinner"></div>
@@ -85,49 +152,111 @@
     <section class="hero-section" id="hero-section" style="display:none;"></section>
 
     <!-- Articles grid -->
-    <section class="articles-grid" id="articles-grid" style="display:none;"></section>
+    <section class="articles-container" id="articles-container" style="display:none;"></section>
 
     <!-- Load more -->
     <div class="load-more-wrap" id="load-more-wrap" style="display:none;">
       <button class="load-more-btn" id="load-more-btn">Load More Stories</button>
     </div>
+
+    <!-- No results -->
+    <div class="no-results" id="no-results" style="display:none;">
+      <div class="no-results-icon">&#128270;</div>
+      <p>No articles found for this filter combination.</p>
+      <button class="retry-btn" id="reset-filters-btn">Reset Filters</button>
+    </div>
   </main>
 
-  <!-- Sidebar widgets (weather + quote) -->
+  <!-- Sidebar -->
+  <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar" aria-label="Toggle sidebar">&#9776;</button>
   <aside class="sidebar" id="sidebar">
+    <button class="sidebar-close" id="sidebar-close">&times;</button>
+
     <div class="widget weather-widget" id="weather-widget">
-      <h3 class="widget-title">Weather</h3>
+      <h3 class="widget-title">&#9788; Weather</h3>
       <div class="weather-body" id="weather-body">
         <div class="weather-loading">Loading weather...</div>
       </div>
     </div>
+
     <div class="widget quote-widget">
-      <h3 class="widget-title">Thought of the Day</h3>
+      <h3 class="widget-title">&#128173; Thought of the Day</h3>
       <blockquote class="daily-quote" id="daily-quote"></blockquote>
       <cite class="quote-author" id="quote-author"></cite>
     </div>
+
+    <div class="widget trending-widget">
+      <h3 class="widget-title">&#128293; Trending Topics</h3>
+      <div class="trending-tags" id="trending-tags"></div>
+    </div>
+
+    <div class="widget stats-widget">
+      <h3 class="widget-title">&#128202; Reading Stats</h3>
+      <div class="reading-stats" id="reading-stats">
+        <div class="stat-row"><span>Articles read</span><span id="stat-read">0</span></div>
+        <div class="stat-row"><span>Bookmarked</span><span id="stat-bookmarked">0</span></div>
+        <div class="stat-row"><span>Categories explored</span><span id="stat-categories">0</span></div>
+      </div>
+    </div>
+
     <div class="widget bookmarks-widget" id="bookmarks-widget" style="display:none;">
-      <h3 class="widget-title">Saved Articles</h3>
+      <h3 class="widget-title">&#9733; Saved Articles</h3>
       <div class="bookmarks-list" id="bookmarks-list"></div>
-      <button class="clear-bookmarks" id="clear-bookmarks">Clear All</button>
+      <button class="clear-bookmarks" id="clear-bookmarks">Clear All Saved</button>
+    </div>
+
+    <div class="widget keyboard-widget">
+      <h3 class="widget-title">&#9000; Keyboard Shortcuts</h3>
+      <div class="shortcut-list">
+        <div class="shortcut-row"><kbd>J</kbd><span>Next article</span></div>
+        <div class="shortcut-row"><kbd>K</kbd><span>Previous article</span></div>
+        <div class="shortcut-row"><kbd>Enter</kbd><span>Open article</span></div>
+        <div class="shortcut-row"><kbd>Esc</kbd><span>Close modal</span></div>
+        <div class="shortcut-row"><kbd>S</kbd><span>Bookmark article</span></div>
+        <div class="shortcut-row"><kbd>R</kbd><span>Refresh</span></div>
+        <div class="shortcut-row"><kbd>D</kbd><span>Dark mode</span></div>
+        <div class="shortcut-row"><kbd>/</kbd><span>Focus search</span></div>
+        <div class="shortcut-row"><kbd>T</kbd><span>Read aloud</span></div>
+      </div>
     </div>
   </aside>
 
   <!-- Back to top -->
-  <button class="back-to-top" id="back-to-top" title="Back to top">&#8593;</button>
+  <button class="back-to-top" id="back-to-top" title="Back to top" aria-label="Back to top">&#8593;</button>
 
   <!-- Article modal -->
-  <div class="modal-overlay" id="modal-overlay">
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal-content" id="modal-content">
-      <button class="modal-close" id="modal-close">&times;</button>
+      <div class="modal-header">
+        <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+        <div class="modal-actions">
+          <button class="modal-action-btn" id="modal-bookmark" title="Bookmark">&#9734;</button>
+          <button class="modal-action-btn" id="modal-share" title="Share">&#128279;</button>
+          <button class="modal-action-btn" id="modal-tts" title="Read aloud">&#128264;</button>
+          <button class="modal-action-btn" id="modal-print" title="Print">&#128424;</button>
+        </div>
+      </div>
       <div class="modal-body" id="modal-body"></div>
     </div>
   </div>
 
+  <!-- Toast notifications -->
+  <div class="toast-container" id="toast-container"></div>
+
   <footer class="main-footer">
     <div class="footer-inner">
-      <p>The Daily Brief &mdash; A personal news dashboard. Not affiliated with any news organization.</p>
-      <p class="footer-sources">Sources: AP News, NPR, BBC, Reuters, The Guardian, and more.</p>
+      <div class="footer-brand">
+        <div class="footer-title">The Daily Brief</div>
+        <p>A personal news dashboard. 100% free, no accounts, no tracking.</p>
+      </div>
+      <div class="footer-sources">
+        <strong>Sources:</strong> AP News, NPR, BBC, Reuters, The Guardian, NY Times, and more.
+      </div>
+      <div class="footer-meta">
+        <span>Auto-updates every 15 minutes</span>
+        <span>All data fetched client-side</span>
+        <span>Bookmarks saved locally</span>
+      </div>
     </div>
   </footer>
 
