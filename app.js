@@ -568,10 +568,22 @@ function attachCardListeners() {
   $$(".hero-card, .article-card").forEach(card => {
     card.addEventListener("click", e => {
       if (e.target.closest(".bookmark-btn") || e.target.closest(".share-btn")) return;
-      openModal(filteredArticles[parseInt(card.dataset.index)]);
+      const article = filteredArticles[parseInt(card.dataset.index)];
+      if (article && article.link) {
+        // Mark as read
+        if (!readArticles.includes(article.id)) {
+          readArticles.push(article.id);
+          if (readArticles.length > 500) readArticles = readArticles.slice(-500);
+          localStorage.setItem("tdb_read", JSON.stringify(readArticles));
+        }
+        window.open(article.link, "_blank", "noopener");
+      }
     });
     card.addEventListener("keydown", e => {
-      if (e.key === "Enter") openModal(filteredArticles[parseInt(card.dataset.index)]);
+      if (e.key === "Enter") {
+        const article = filteredArticles[parseInt(card.dataset.index)];
+        if (article && article.link) window.open(article.link, "_blank", "noopener");
+      }
     });
   });
   $$(".bookmark-btn").forEach(btn => {
