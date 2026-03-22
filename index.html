@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Daily Brief</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Top utility bar -->
+  <div class="utility-bar">
+    <div class="utility-inner">
+      <div class="date-display" id="date-display"></div>
+      <div class="utility-right">
+        <div class="weather-mini" id="weather-mini" title="Click for weather details">
+          <span id="weather-icon-mini">--</span>
+          <span id="weather-temp-mini">--</span>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">
+          <span id="theme-icon">&#9790;</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Masthead -->
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="masthead-rule top"></div>
+      <div class="masthead-edition">Your Personal News Dashboard</div>
+      <h1 class="masthead-title">The Daily Brief</h1>
+      <div class="masthead-tagline">All the news that matters, curated for the thoughtful reader</div>
+      <div class="masthead-rule bottom"></div>
+    </div>
+  </header>
+
+  <!-- Breaking news ticker -->
+  <div class="ticker-wrap" id="ticker-wrap">
+    <div class="ticker-label">BREAKING</div>
+    <div class="ticker-content">
+      <div class="ticker-scroll" id="ticker-scroll"></div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="main-nav">
+    <div class="nav-inner">
+      <button class="nav-btn active" data-category="top">Top Stories</button>
+      <button class="nav-btn" data-category="world">World</button>
+      <button class="nav-btn" data-category="politics">Politics</button>
+      <button class="nav-btn" data-category="science">Science</button>
+      <button class="nav-btn" data-category="technology">Technology</button>
+      <button class="nav-btn" data-category="business">Business</button>
+      <button class="nav-btn" data-category="health">Health</button>
+      <button class="nav-btn" data-category="opinion">Opinion</button>
+    </div>
+  </nav>
+
+  <!-- Search bar -->
+  <div class="search-section">
+    <div class="search-inner">
+      <input type="text" id="search-input" class="search-input" placeholder="Search articles...">
+      <button id="search-clear" class="search-clear" style="display:none;">&times;</button>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <main class="main-content">
+    <!-- Loading state -->
+    <div class="loading-state" id="loading-state">
+      <div class="loading-spinner"></div>
+      <p>Fetching the latest stories...</p>
+    </div>
+
+    <!-- Error state -->
+    <div class="error-state" id="error-state" style="display:none;">
+      <div class="error-icon">&#9888;</div>
+      <p id="error-msg">Unable to load articles. Please try again.</p>
+      <button class="retry-btn" id="retry-btn">Retry</button>
+    </div>
+
+    <!-- Featured / Hero -->
+    <section class="hero-section" id="hero-section" style="display:none;"></section>
+
+    <!-- Articles grid -->
+    <section class="articles-grid" id="articles-grid" style="display:none;"></section>
+
+    <!-- Load more -->
+    <div class="load-more-wrap" id="load-more-wrap" style="display:none;">
+      <button class="load-more-btn" id="load-more-btn">Load More Stories</button>
+    </div>
+  </main>
+
+  <!-- Sidebar widgets (weather + quote) -->
+  <aside class="sidebar" id="sidebar">
+    <div class="widget weather-widget" id="weather-widget">
+      <h3 class="widget-title">Weather</h3>
+      <div class="weather-body" id="weather-body">
+        <div class="weather-loading">Loading weather...</div>
+      </div>
+    </div>
+    <div class="widget quote-widget">
+      <h3 class="widget-title">Thought of the Day</h3>
+      <blockquote class="daily-quote" id="daily-quote"></blockquote>
+      <cite class="quote-author" id="quote-author"></cite>
+    </div>
+    <div class="widget bookmarks-widget" id="bookmarks-widget" style="display:none;">
+      <h3 class="widget-title">Saved Articles</h3>
+      <div class="bookmarks-list" id="bookmarks-list"></div>
+      <button class="clear-bookmarks" id="clear-bookmarks">Clear All</button>
+    </div>
+  </aside>
+
+  <!-- Back to top -->
+  <button class="back-to-top" id="back-to-top" title="Back to top">&#8593;</button>
+
+  <!-- Article modal -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-content" id="modal-content">
+      <button class="modal-close" id="modal-close">&times;</button>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <footer class="main-footer">
+    <div class="footer-inner">
+      <p>The Daily Brief &mdash; A personal news dashboard. Not affiliated with any news organization.</p>
+      <p class="footer-sources">Sources: AP News, NPR, BBC, Reuters, The Guardian, and more.</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
