@@ -2,23 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>The Daily Brief</title>
   <meta name="description" content="Your personal news dashboard — curated, clean, and free.">
-  <meta name="theme-color" content="#1a1a1a">
+  <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Daily Brief">
+  <meta name="color-scheme" content="light dark">
+  <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Skip to content for accessibility -->
   <a href="#main-content" class="skip-link">Skip to content</a>
+
+  <!-- Offline banner -->
+  <div class="offline-banner" id="offline-banner" role="alert" aria-live="assertive">
+    You're offline — showing cached articles
+  </div>
 
   <!-- Top utility bar -->
   <div class="utility-bar">
     <div class="utility-inner">
-      <div class="date-display" id="date-display"></div>
+      <div class="greeting-date">
+        <div class="greeting" id="greeting"></div>
+        <div class="date-display" id="date-display"></div>
+      </div>
       <div class="utility-center">
         <div class="auto-update-indicator" id="auto-update-indicator" title="Auto-refreshes every 15 minutes">
           <span class="pulse-dot"></span>
@@ -31,15 +46,15 @@
           <span id="weather-icon-mini">--</span>
           <span id="weather-temp-mini">--</span>
         </div>
-        <button class="icon-btn" id="font-decrease" title="Decrease font size">A-</button>
-        <button class="icon-btn" id="font-increase" title="Increase font size">A+</button>
-        <button class="icon-btn" id="view-toggle" title="Toggle view mode">
+        <button class="icon-btn" id="font-decrease" title="Decrease font size" aria-label="Decrease font size">A-</button>
+        <button class="icon-btn" id="font-increase" title="Increase font size" aria-label="Increase font size">A+</button>
+        <button class="icon-btn" id="view-toggle" title="Toggle view mode" aria-label="Toggle view mode">
           <span id="view-icon">&#9638;</span>
         </button>
-        <button class="icon-btn" id="theme-toggle" title="Toggle dark mode">
+        <button class="icon-btn" id="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">
           <span id="theme-icon">&#9790;</span>
         </button>
-        <button class="icon-btn" id="refresh-btn" title="Refresh now">&#8635;</button>
+        <button class="icon-btn" id="refresh-btn" title="Refresh now" aria-label="Refresh articles">&#8635;</button>
       </div>
     </div>
   </div>
@@ -56,7 +71,7 @@
   </header>
 
   <!-- Breaking news ticker -->
-  <div class="ticker-wrap" id="ticker-wrap">
+  <div class="ticker-wrap" id="ticker-wrap" aria-hidden="true">
     <div class="ticker-label">BREAKING</div>
     <div class="ticker-content">
       <div class="ticker-scroll" id="ticker-scroll"></div>
@@ -64,57 +79,60 @@
   </div>
 
   <!-- Navigation -->
-  <nav class="main-nav" id="main-nav">
+  <nav class="main-nav" id="main-nav" aria-label="News categories">
     <div class="nav-inner">
-      <div class="nav-categories">
-        <button class="nav-btn active" data-category="top">Top Stories</button>
-        <button class="nav-btn" data-category="world">World</button>
-        <button class="nav-btn" data-category="politics">Politics</button>
-        <button class="nav-btn" data-category="science">Science</button>
-        <button class="nav-btn" data-category="technology">Technology</button>
-        <button class="nav-btn" data-category="business">Business</button>
-        <button class="nav-btn" data-category="health">Health</button>
-        <button class="nav-btn" data-category="arts">Arts</button>
-        <button class="nav-btn" data-category="opinion">Opinion</button>
-        <button class="nav-btn" data-category="climate">Climate</button>
+      <div class="nav-categories" role="tablist">
+        <button class="nav-btn active" data-category="top" role="tab" aria-selected="true">Top Stories</button>
+        <button class="nav-btn" data-category="world" role="tab" aria-selected="false">World</button>
+        <button class="nav-btn" data-category="politics" role="tab" aria-selected="false">Politics</button>
+        <button class="nav-btn" data-category="science" role="tab" aria-selected="false">Science</button>
+        <button class="nav-btn" data-category="technology" role="tab" aria-selected="false">Technology</button>
+        <button class="nav-btn" data-category="business" role="tab" aria-selected="false">Business</button>
+        <button class="nav-btn" data-category="health" role="tab" aria-selected="false">Health</button>
+        <button class="nav-btn" data-category="arts" role="tab" aria-selected="false">Arts</button>
+        <button class="nav-btn" data-category="opinion" role="tab" aria-selected="false">Opinion</button>
+        <button class="nav-btn" data-category="climate" role="tab" aria-selected="false">Climate</button>
       </div>
     </div>
   </nav>
 
+  <!-- Pull to refresh indicator (mobile) -->
+  <div class="pull-refresh" id="pull-refresh" aria-hidden="true">
+    <div class="pull-refresh-spinner"></div>
+    <span>Release to refresh</span>
+  </div>
+
   <!-- Filters bar -->
   <div class="filters-bar">
     <div class="filters-inner">
-      <!-- Time range -->
       <div class="filter-group">
-        <label class="filter-label">Time Range:</label>
-        <div class="filter-pills" id="time-pills">
-          <button class="pill active" data-range="today">Today</button>
-          <button class="pill" data-range="yesterday">Yesterday</button>
-          <button class="pill" data-range="this-week">This Week</button>
-          <button class="pill" data-range="last-week">Last Week</button>
-          <button class="pill" data-range="this-month">This Month</button>
-          <button class="pill" data-range="all">All Time</button>
+        <label class="filter-label" id="time-label">Time:</label>
+        <div class="filter-pills" id="time-pills" role="radiogroup" aria-labelledby="time-label">
+          <button class="pill active" data-range="today" role="radio" aria-checked="true">Today</button>
+          <button class="pill" data-range="yesterday" role="radio" aria-checked="false">Yesterday</button>
+          <button class="pill" data-range="this-week" role="radio" aria-checked="false">This Week</button>
+          <button class="pill" data-range="last-week" role="radio" aria-checked="false">Last Week</button>
+          <button class="pill" data-range="this-month" role="radio" aria-checked="false">This Month</button>
+          <button class="pill" data-range="all" role="radio" aria-checked="false">All Time</button>
         </div>
       </div>
-      <!-- Sort -->
       <div class="filter-group">
-        <label class="filter-label">Sort:</label>
+        <label class="filter-label" for="sort-select">Sort:</label>
         <select class="filter-select" id="sort-select">
           <option value="newest">Newest First</option>
           <option value="oldest">Oldest First</option>
           <option value="source">By Source</option>
         </select>
       </div>
-      <!-- Search -->
       <div class="filter-group search-group">
         <div class="search-wrap">
-          <span class="search-icon">&#128269;</span>
-          <input type="text" id="search-input" class="search-input" placeholder="Search articles..." aria-label="Search articles">
+          <span class="search-icon" aria-hidden="true">&#128269;</span>
+          <input type="search" id="search-input" class="search-input" placeholder="Search articles..." aria-label="Search articles" autocomplete="off">
           <button id="search-clear" class="search-clear" style="display:none;" aria-label="Clear search">&times;</button>
         </div>
       </div>
-      <!-- Source filter -->
       <div class="filter-group">
+        <label class="filter-label" for="source-filter">Source:</label>
         <select class="filter-select" id="source-filter">
           <option value="all">All Sources</option>
         </select>
@@ -123,36 +141,55 @@
   </div>
 
   <!-- Stats bar -->
-  <div class="stats-bar" id="stats-bar">
+  <div class="stats-bar" id="stats-bar" role="status" aria-live="polite" aria-atomic="true">
     <div class="stats-inner">
       <span class="stat-item" id="article-count">0 articles</span>
-      <span class="stat-divider">|</span>
+      <span class="stat-divider" aria-hidden="true">|</span>
       <span class="stat-item" id="source-count">0 sources</span>
-      <span class="stat-divider">|</span>
+      <span class="stat-divider" aria-hidden="true">|</span>
       <span class="stat-item" id="range-label">Today</span>
     </div>
   </div>
 
   <!-- Main content -->
   <main class="main-content" id="main-content">
-    <!-- Loading state -->
-    <div class="loading-state" id="loading-state">
-      <div class="loading-spinner"></div>
-      <p>Fetching the latest stories...</p>
+    <!-- Skeleton loading -->
+    <div class="skeleton-wrap" id="skeleton-wrap">
+      <div class="skeleton-hero">
+        <div class="skeleton-img shimmer"></div>
+        <div class="skeleton-hero-body">
+          <div class="skeleton-line w40 shimmer"></div>
+          <div class="skeleton-line w100 shimmer"></div>
+          <div class="skeleton-line w90 shimmer"></div>
+          <div class="skeleton-line w70 shimmer"></div>
+          <div class="skeleton-line w30 shimmer"></div>
+        </div>
+      </div>
+      <div class="skeleton-grid">
+        <div class="skeleton-card"><div class="skeleton-card-img shimmer"></div><div class="skeleton-card-body"><div class="skeleton-line w40 shimmer"></div><div class="skeleton-line w100 shimmer"></div><div class="skeleton-line w80 shimmer"></div></div></div>
+        <div class="skeleton-card"><div class="skeleton-card-img shimmer"></div><div class="skeleton-card-body"><div class="skeleton-line w40 shimmer"></div><div class="skeleton-line w100 shimmer"></div><div class="skeleton-line w80 shimmer"></div></div></div>
+        <div class="skeleton-card"><div class="skeleton-card-img shimmer"></div><div class="skeleton-card-body"><div class="skeleton-line w40 shimmer"></div><div class="skeleton-line w100 shimmer"></div><div class="skeleton-line w80 shimmer"></div></div></div>
+        <div class="skeleton-card"><div class="skeleton-card-img shimmer"></div><div class="skeleton-card-body"><div class="skeleton-line w40 shimmer"></div><div class="skeleton-line w100 shimmer"></div><div class="skeleton-line w80 shimmer"></div></div></div>
+        <div class="skeleton-card"><div class="skeleton-card-img shimmer"></div><div class="skeleton-card-body"><div class="skeleton-line w40 shimmer"></div><div class="skeleton-line w100 shimmer"></div><div class="skeleton-line w80 shimmer"></div></div></div>
+        <div class="skeleton-card"><div class="skeleton-card-img shimmer"></div><div class="skeleton-card-body"><div class="skeleton-line w40 shimmer"></div><div class="skeleton-line w100 shimmer"></div><div class="skeleton-line w80 shimmer"></div></div></div>
+      </div>
     </div>
 
     <!-- Error state -->
-    <div class="error-state" id="error-state" style="display:none;">
+    <div class="error-state" id="error-state" style="display:none;" role="alert">
       <div class="error-icon">&#9888;</div>
       <p id="error-msg">Unable to load articles. Please try again.</p>
       <button class="retry-btn" id="retry-btn">Retry</button>
     </div>
 
-    <!-- Featured / Hero -->
-    <section class="hero-section" id="hero-section" style="display:none;"></section>
+    <!-- Hero -->
+    <section class="hero-section" id="hero-section" style="display:none;" aria-label="Featured article"></section>
 
-    <!-- Articles grid -->
-    <section class="articles-container" id="articles-container" style="display:none;"></section>
+    <!-- Articles -->
+    <section class="articles-container" id="articles-container" style="display:none;" aria-label="News articles"></section>
+
+    <!-- Infinite scroll sentinel -->
+    <div id="scroll-sentinel" style="height:1px;"></div>
 
     <!-- Load more -->
     <div class="load-more-wrap" id="load-more-wrap" style="display:none;">
@@ -167,16 +204,15 @@
     </div>
   </main>
 
-  <!-- Sidebar -->
-  <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar" aria-label="Toggle sidebar">&#9776;</button>
-  <aside class="sidebar" id="sidebar">
-    <button class="sidebar-close" id="sidebar-close">&times;</button>
+  <!-- Sidebar toggle -->
+  <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar" aria-label="Open sidebar">&#9776;</button>
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Sidebar">
+    <button class="sidebar-close" id="sidebar-close" aria-label="Close sidebar">&times;</button>
 
-    <div class="widget weather-widget" id="weather-widget">
+    <div class="widget weather-widget">
       <h3 class="widget-title">&#9788; Weather</h3>
-      <div class="weather-body" id="weather-body">
-        <div class="weather-loading">Loading weather...</div>
-      </div>
+      <div class="weather-body" id="weather-body"><div class="weather-loading">Loading weather...</div></div>
     </div>
 
     <div class="widget quote-widget">
@@ -219,29 +255,61 @@
         <div class="shortcut-row"><kbd>T</kbd><span>Read aloud</span></div>
       </div>
     </div>
+
+    <!-- Install PWA prompt -->
+    <div class="widget install-widget" id="install-widget" style="display:none;">
+      <h3 class="widget-title">&#128242; Install App</h3>
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Add to your home screen for a native app experience.</p>
+      <button class="install-btn" id="install-btn">Install The Daily Brief</button>
+    </div>
   </aside>
 
-  <!-- Back to top -->
-  <button class="back-to-top" id="back-to-top" title="Back to top" aria-label="Back to top">&#8593;</button>
-
-  <!-- Article modal -->
-  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true">
+  <!-- Article modal (bottom sheet on mobile) -->
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-article-title">
     <div class="modal-content" id="modal-content">
+      <!-- Reading progress bar -->
+      <div class="reading-progress-bar" id="reading-progress-bar"></div>
       <div class="modal-header">
         <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
         <div class="modal-actions">
-          <button class="modal-action-btn" id="modal-bookmark" title="Bookmark">&#9734;</button>
-          <button class="modal-action-btn" id="modal-share" title="Share">&#128279;</button>
-          <button class="modal-action-btn" id="modal-tts" title="Read aloud">&#128264;</button>
-          <button class="modal-action-btn" id="modal-print" title="Print">&#128424;</button>
+          <button class="modal-action-btn" id="modal-bookmark" title="Bookmark" aria-label="Bookmark article">&#9734;</button>
+          <button class="modal-action-btn" id="modal-share" title="Share" aria-label="Share article">&#128279;</button>
+          <button class="modal-action-btn" id="modal-tts" title="Read aloud" aria-label="Read article aloud">&#128264;</button>
+          <button class="modal-action-btn" id="modal-print" title="Print" aria-label="Print article">&#128424;</button>
         </div>
       </div>
+      <!-- Drag handle for mobile bottom sheet -->
+      <div class="modal-drag-handle" id="modal-drag-handle" aria-hidden="true"><div class="drag-bar"></div></div>
       <div class="modal-body" id="modal-body"></div>
     </div>
   </div>
 
-  <!-- Toast notifications -->
-  <div class="toast-container" id="toast-container"></div>
+  <!-- Mobile bottom nav -->
+  <nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="Mobile navigation">
+    <button class="bottom-nav-btn active" data-action="home" aria-label="Home">
+      <span class="bottom-nav-icon">&#127968;</span>
+      <span class="bottom-nav-label">Home</span>
+    </button>
+    <button class="bottom-nav-btn" data-action="search" aria-label="Search">
+      <span class="bottom-nav-icon">&#128269;</span>
+      <span class="bottom-nav-label">Search</span>
+    </button>
+    <button class="bottom-nav-btn" data-action="bookmarks" aria-label="Bookmarks">
+      <span class="bottom-nav-icon">&#9733;</span>
+      <span class="bottom-nav-label">Saved</span>
+      <span class="bottom-nav-badge" id="bookmark-badge" style="display:none;"></span>
+    </button>
+    <button class="bottom-nav-btn" data-action="sidebar" aria-label="More">
+      <span class="bottom-nav-icon">&#9776;</span>
+      <span class="bottom-nav-label">More</span>
+    </button>
+  </nav>
+
+  <!-- Toast -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <!-- Back to top -->
+  <button class="back-to-top" id="back-to-top" title="Back to top" aria-label="Back to top">&#8593;</button>
 
   <footer class="main-footer">
     <div class="footer-inner">
@@ -250,12 +318,12 @@
         <p>A personal news dashboard. 100% free, no accounts, no tracking.</p>
       </div>
       <div class="footer-sources">
-        <strong>Sources:</strong> AP News, NPR, BBC, Reuters, The Guardian, NY Times, and more.
+        <strong>Sources:</strong> NPR, BBC, NY Times, The Guardian, Reuters, and more.
       </div>
       <div class="footer-meta">
-        <span>Auto-updates every 15 minutes</span>
-        <span>All data fetched client-side</span>
-        <span>Bookmarks saved locally</span>
+        <span>Auto-updates every 15 min</span>
+        <span>Works offline</span>
+        <span>All data stays on your device</span>
       </div>
     </div>
   </footer>

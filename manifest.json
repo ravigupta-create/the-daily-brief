@@ -1,0 +1,16 @@
+{
+  "name": "The Daily Brief",
+  "short_name": "Daily Brief",
+  "description": "Your personal news dashboard — curated, clean, and free.",
+  "start_url": "/the-daily-brief/",
+  "display": "standalone",
+  "background_color": "#faf9f6",
+  "theme_color": "#1a1a1a",
+  "orientation": "any",
+  "categories": ["news", "magazines"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

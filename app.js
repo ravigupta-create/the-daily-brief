@@ -1,9 +1,26 @@
 // ==========================================
-// The Daily Brief — Complete App (100/100)
-// Auto-updates, time ranges, full features
+// The Daily Brief — 100/100 App
+// PWA, offline, mobile-first, accessible
 // ==========================================
 
+// === Service Worker Registration ===
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+// === PWA Install Prompt ===
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const w = document.getElementById("install-widget");
+  if (w) w.style.display = "block";
+});
+
+// === Constants ===
 const RSS_PROXY = "https://api.rss2json.com/v1/api.json?rss_url=";
+const AUTO_REFRESH_MS = 15 * 60 * 1000;
+const PAGE_SIZE = 15;
 
 const FEEDS = {
   top: [
@@ -11,7 +28,6 @@ const FEEDS = {
     { url: "https://feeds.bbci.co.uk/news/rss.xml", name: "BBC News" },
     { url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml", name: "NY Times" },
     { url: "https://www.theguardian.com/us-news/rss", name: "The Guardian" },
-    { url: "https://feeds.reuters.com/reuters/topNews", name: "Reuters" },
   ],
   world: [
     { url: "https://feeds.bbci.co.uk/news/world/rss.xml", name: "BBC World" },
@@ -70,7 +86,7 @@ const QUOTES = [
   { text: "In the middle of difficulty lies opportunity.", author: "Albert Einstein" },
   { text: "The arc of the moral universe is long, but it bends toward justice.", author: "Martin Luther King Jr." },
   { text: "Science is not only a disciple of reason but also one of romance and passion.", author: "Stephen Hawking" },
-  { text: "The good thing about science is that it's true whether or not you believe in it.", author: "Neil deGrasse Tyson" },
+  { text: "The good thing about science is that it\u2019s true whether or not you believe in it.", author: "Neil deGrasse Tyson" },
   { text: "Injustice anywhere is a threat to justice everywhere.", author: "Martin Luther King Jr." },
   { text: "In a time of deceit, telling the truth is a revolutionary act.", author: "George Orwell" },
   { text: "Those who cannot remember the past are condemned to repeat it.", author: "George Santayana" },
@@ -81,43 +97,34 @@ const QUOTES = [
   { text: "The measure of intelligence is the ability to change.", author: "Albert Einstein" },
   { text: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela" },
   { text: "The cost of liberty is less than the price of repression.", author: "W.E.B. Du Bois" },
-  { text: "We are not combating individuals. We are trying to stamp out an unjust system.", author: "Bayard Rustin" },
   { text: "The best time to plant a tree was twenty years ago. The second best time is now.", author: "Chinese Proverb" },
-  { text: "The world is a book, and those who do not travel read only one page.", author: "Saint Augustine" },
-  { text: "It is not the strongest of the species that survives, but the most adaptable.", author: "Charles Darwin" },
-  { text: "The only limit to our realization of tomorrow will be our doubts of today.", author: "Franklin D. Roosevelt" },
-  { text: "What counts in life is not the mere fact that we have lived.", author: "Nelson Mandela" },
-  { text: "Try to be a rainbow in someone's cloud.", author: "Maya Angelou" },
-  { text: "The truth is rarely pure and never simple.", author: "Oscar Wilde" },
-  { text: "You must be the change you wish to see in the world.", author: "Mahatma Gandhi" },
-  { text: "I have learned over the years that when one's mind is made up, this diminishes fear.", author: "Rosa Parks" },
-  { text: "Facts are stubborn things; and whatever may be our wishes, they cannot alter the state of facts.", author: "John Adams" },
-  { text: "The function of education is to teach one to think intensively and critically.", author: "Martin Luther King Jr." },
-  { text: "Knowledge speaks, but wisdom listens.", author: "Jimi Hendrix" },
   { text: "We do not inherit the earth from our ancestors; we borrow it from our children.", author: "Native American Proverb" },
   { text: "The only true wisdom is in knowing you know nothing.", author: "Socrates" },
+  { text: "You must be the change you wish to see in the world.", author: "Mahatma Gandhi" },
+  { text: "Try to be a rainbow in someone\u2019s cloud.", author: "Maya Angelou" },
+  { text: "Facts are stubborn things.", author: "John Adams" },
+  { text: "The function of education is to teach one to think intensively and critically.", author: "Martin Luther King Jr." },
+  { text: "It is not the strongest of the species that survives, but the most adaptable.", author: "Charles Darwin" },
+  { text: "I have learned over the years that when one\u2019s mind is made up, this diminishes fear.", author: "Rosa Parks" },
+  { text: "Knowledge speaks, but wisdom listens.", author: "Jimi Hendrix" },
+  { text: "The world is a book, and those who do not travel read only one page.", author: "Saint Augustine" },
+  { text: "What counts in life is not the mere fact that we have lived.", author: "Nelson Mandela" },
+  { text: "The truth is rarely pure and never simple.", author: "Oscar Wilde" },
+  { text: "The only limit to our realization of tomorrow will be our doubts of today.", author: "Franklin D. Roosevelt" },
+  { text: "A nation that destroys its soils destroys itself.", author: "Franklin D. Roosevelt" },
 ];
 
-const CAT_ICONS = {
-  top: "\u{1F4F0}", world: "\u{1F30E}", politics: "\u{1F3DB}", science: "\u{1F52C}",
-  technology: "\u{1F4BB}", business: "\u{1F4C8}", health: "\u{1F3E5}", arts: "\u{1F3A8}",
-  opinion: "\u{1F4AC}", climate: "\u{1F30D}",
-};
-
-const CAT_ICONS_HTML = {
+const CAT_HTML = {
   top: "&#128240;", world: "&#127758;", politics: "&#127963;", science: "&#128300;",
   technology: "&#128187;", business: "&#128200;", health: "&#127973;", arts: "&#127912;",
   opinion: "&#128172;", climate: "&#127757;",
 };
 
-// ==========================================
-// State
-// ==========================================
+// === State ===
 let currentCategory = "top";
 let allArticles = [];
 let filteredArticles = [];
 let displayedCount = 0;
-const PAGE_SIZE = 15;
 let bookmarks = JSON.parse(localStorage.getItem("tdb_bookmarks") || "[]");
 let readArticles = JSON.parse(localStorage.getItem("tdb_read") || "[]");
 let categoriesVisited = new Set(JSON.parse(localStorage.getItem("tdb_cats") || "[]"));
@@ -129,77 +136,135 @@ let viewMode = localStorage.getItem("tdb_view") || "grid";
 let fontScale = parseFloat(localStorage.getItem("tdb_font") || "1");
 let autoRefreshTimer = null;
 let currentModalArticle = null;
-let ttsUtterance = null;
 let focusedCardIndex = -1;
-let articleCache = {};
+let infiniteScrollEnabled = true;
+let isRefreshing = false;
 
-const AUTO_REFRESH_MS = 15 * 60 * 1000; // 15 minutes
-
-// ==========================================
-// DOM
-// ==========================================
+// === Helpers ===
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 
-// ==========================================
-// Init
-// ==========================================
+function esc(str) {
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function ago(date) {
+  const diff = Date.now() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function readingTime(text) {
+  return Math.max(1, Math.round(text.split(/\s+/).length / 200));
+}
+
+function stripHTML(html) {
+  const d = document.createElement("div");
+  d.innerHTML = html;
+  return d.textContent.trim();
+}
+
+function extractImg(html) {
+  const m = html.match(/<img[^>]+src=["']([^"']+)["']/);
+  return m ? m[1] : "";
+}
+
+function toast(msg) {
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = msg;
+  $("#toast-container").appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+async function copyLink(text, msg) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(msg || "Copied!");
+  } catch {
+    toast("Couldn\u2019t copy");
+  }
+}
+
+// === Init ===
 function init() {
+  setGreeting();
   setDate();
-  setTheme(localStorage.getItem("tdb_theme") || "light");
+  detectTheme();
   setFontScale(fontScale);
   setViewMode(viewMode);
   setQuote();
   loadWeather();
   loadCategory("top");
   setupListeners();
+  setupInfiniteScroll();
+  setupPullToRefresh();
+  setupModalSwipe();
+  setupOfflineDetection();
   startAutoRefresh();
   updateStats();
+  updateBookmarkBadge();
+}
+
+// === Greeting ===
+function setGreeting() {
+  const h = new Date().getHours();
+  let g = "Good evening";
+  if (h < 12) g = "Good morning";
+  else if (h < 17) g = "Good afternoon";
+  $("#greeting").textContent = g;
 }
 
 function setDate() {
-  const now = new Date();
-  $("#date-display").textContent = now.toLocaleDateString("en-US", {
+  $("#date-display").textContent = new Date().toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric"
   });
 }
 
-// ==========================================
-// Theme
-// ==========================================
+// === Theme ===
+function detectTheme() {
+  const saved = localStorage.getItem("tdb_theme");
+  if (saved) {
+    setTheme(saved);
+  } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+    setTheme("dark");
+  } else {
+    setTheme("light");
+  }
+}
+
 function setTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
   localStorage.setItem("tdb_theme", theme);
   $("#theme-icon").innerHTML = theme === "dark" ? "&#9788;" : "&#9790;";
 }
 
-// ==========================================
-// Font Scale
-// ==========================================
-function setFontScale(scale) {
-  scale = Math.max(0.8, Math.min(1.4, scale));
-  fontScale = scale;
-  document.documentElement.style.setProperty("--font-scale", scale);
-  localStorage.setItem("tdb_font", scale);
+// === Font Scale ===
+function setFontScale(s) {
+  s = Math.max(0.85, Math.min(1.4, s));
+  fontScale = s;
+  document.documentElement.style.setProperty("--font-scale", s);
+  localStorage.setItem("tdb_font", s);
 }
 
-// ==========================================
-// View Mode
-// ==========================================
+// === View Mode ===
 function setViewMode(mode) {
   viewMode = mode;
   localStorage.setItem("tdb_view", mode);
   const icons = { grid: "&#9638;", list: "&#9776;", compact: "&#9472;" };
   $("#view-icon").innerHTML = icons[mode] || icons.grid;
-  const container = $("#articles-container");
-  if (container) {
-    container.className = "articles-container " + mode + "-view";
-  }
 }
 
-// ==========================================
-// Quote
-// ==========================================
+// === Quote ===
 function setQuote() {
   const idx = Math.floor(Date.now() / 86400000) % QUOTES.length;
   const q = QUOTES[idx];
@@ -207,9 +272,7 @@ function setQuote() {
   $("#quote-author").textContent = `\u2014 ${q.author}`;
 }
 
-// ==========================================
-// Weather (wttr.in — free, no API key)
-// ==========================================
+// === Weather ===
 async function loadWeather() {
   try {
     const res = await fetch("https://wttr.in/?format=j1", { signal: AbortSignal.timeout(6000) });
@@ -248,71 +311,63 @@ function weatherEmoji(code) {
   return "\uD83C\uDF24\uFE0F";
 }
 
-// ==========================================
-// Auto Refresh
-// ==========================================
+// === Auto Refresh ===
 function startAutoRefresh() {
   clearInterval(autoRefreshTimer);
-  autoRefreshTimer = setInterval(() => {
-    loadCategory(currentCategory, true);
-  }, AUTO_REFRESH_MS);
+  autoRefreshTimer = setInterval(() => loadCategory(currentCategory, true), AUTO_REFRESH_MS);
 }
 
 function updateLastRefreshed() {
-  const now = new Date();
-  $("#last-updated").textContent = `Updated ${now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+  $("#last-updated").textContent = `Updated ${new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
 }
 
-// ==========================================
-// Fetch RSS
-// ==========================================
+// === Offline Detection ===
+function setupOfflineDetection() {
+  const update = () => document.body.classList.toggle("offline", !navigator.onLine);
+  window.addEventListener("online", () => { update(); toast("Back online"); loadCategory(currentCategory, true); });
+  window.addEventListener("offline", () => { update(); toast("You\u2019re offline"); });
+  update();
+}
+
+// === Fetch RSS ===
 async function fetchFeed(feed, category) {
   try {
-    const res = await fetch(`${RSS_PROXY}${encodeURIComponent(feed.url)}`, {
-      signal: AbortSignal.timeout(10000)
-    });
+    const res = await fetch(`${RSS_PROXY}${encodeURIComponent(feed.url)}`, { signal: AbortSignal.timeout(10000) });
     const data = await res.json();
     if (data.status !== "ok") return [];
     return (data.items || []).map(item => ({
       title: stripHTML(item.title || ""),
-      excerpt: stripHTML(item.description || item.content || "").slice(0, 400),
+      excerpt: stripHTML(item.description || item.content || "").slice(0, 450),
       link: item.link || "",
       image: item.thumbnail || item.enclosure?.link || extractImg(item.description || item.content || ""),
       date: new Date(item.pubDate),
       source: feed.name,
-      category: category,
-      id: btoa(item.link || item.title || "").slice(0, 24),
+      category,
+      id: btoa(unescape(encodeURIComponent(item.link || item.title || ""))).slice(0, 24),
     }));
   } catch {
     return [];
   }
 }
 
-function stripHTML(html) {
-  const d = document.createElement("div");
-  d.innerHTML = html;
-  return d.textContent.trim();
-}
-
-function extractImg(html) {
-  const m = html.match(/<img[^>]+src=["']([^"']+)["']/);
-  return m ? m[1] : "";
-}
-
-// ==========================================
-// Load Category
-// ==========================================
+// === Load Category ===
 async function loadCategory(category, silent) {
+  if (isRefreshing && !silent) return;
+  isRefreshing = true;
   currentCategory = category;
   categoriesVisited.add(category);
   localStorage.setItem("tdb_cats", JSON.stringify([...categoriesVisited]));
 
   // Update nav
-  $$(".nav-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.category === category));
+  $$(".nav-btn").forEach(btn => {
+    const isActive = btn.dataset.category === category;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-selected", isActive);
+  });
 
   if (!silent) {
     displayedCount = 0;
-    $("#loading-state").style.display = "block";
+    $("#skeleton-wrap").style.display = "block";
     $("#error-state").style.display = "none";
     $("#hero-section").style.display = "none";
     $("#articles-container").style.display = "none";
@@ -333,75 +388,63 @@ async function loadCategory(category, silent) {
     return a.title.length > 10;
   });
 
-  // Sort newest
   articles.sort((a, b) => b.date - a.date);
   allArticles = articles;
 
-  // Cache
-  articleCache[category] = articles;
+  // Cache for offline
+  try { localStorage.setItem("tdb_cache_" + category, JSON.stringify(articles.slice(0, 50))); } catch {}
 
-  // Update source filter dropdown
   updateSourceFilter(articles);
-
-  // Update ticker
   if (!silent) populateTicker(articles.slice(0, 10));
-
   updateLastRefreshed();
-  $("#loading-state").style.display = "none";
+  $("#skeleton-wrap").style.display = "none";
 
   if (articles.length === 0 && !silent) {
-    $("#error-state").style.display = "block";
-    $("#error-msg").textContent = "No articles found. Try another category or check your connection.";
-    return;
+    // Try offline cache
+    try {
+      const cached = JSON.parse(localStorage.getItem("tdb_cache_" + category) || "[]");
+      if (cached.length) {
+        allArticles = cached.map(a => ({ ...a, date: new Date(a.date) }));
+        toast("Showing cached articles");
+      } else {
+        $("#error-state").style.display = "block";
+        isRefreshing = false;
+        return;
+      }
+    } catch {
+      $("#error-state").style.display = "block";
+      isRefreshing = false;
+      return;
+    }
   }
 
   if (!silent) displayedCount = 0;
   applyFilters();
   updateStats();
-  extractTrending(articles);
+  extractTrending(allArticles);
+  isRefreshing = false;
 }
 
-// ==========================================
-// Filters
-// ==========================================
+// === Filters ===
 function applyFilters() {
   let articles = [...allArticles];
-
-  // Time range filter
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterdayStart = new Date(todayStart - 86400000);
-  const weekStart = new Date(todayStart);
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  const weekStart = new Date(todayStart); weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   const lastWeekStart = new Date(weekStart - 7 * 86400000);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   switch (timeRange) {
-    case "today":
-      articles = articles.filter(a => a.date >= todayStart);
-      break;
-    case "yesterday":
-      articles = articles.filter(a => a.date >= yesterdayStart && a.date < todayStart);
-      break;
-    case "this-week":
-      articles = articles.filter(a => a.date >= weekStart);
-      break;
-    case "last-week":
-      articles = articles.filter(a => a.date >= lastWeekStart && a.date < weekStart);
-      break;
-    case "this-month":
-      articles = articles.filter(a => a.date >= monthStart);
-      break;
-    case "all":
-      break;
+    case "today": articles = articles.filter(a => a.date >= todayStart); break;
+    case "yesterday": articles = articles.filter(a => a.date >= yesterdayStart && a.date < todayStart); break;
+    case "this-week": articles = articles.filter(a => a.date >= weekStart); break;
+    case "last-week": articles = articles.filter(a => a.date >= lastWeekStart && a.date < weekStart); break;
+    case "this-month": articles = articles.filter(a => a.date >= monthStart); break;
   }
 
-  // Source filter
-  if (sourceFilter !== "all") {
-    articles = articles.filter(a => a.source === sourceFilter);
-  }
+  if (sourceFilter !== "all") articles = articles.filter(a => a.source === sourceFilter);
 
-  // Search
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
     articles = articles.filter(a =>
@@ -411,7 +454,6 @@ function applyFilters() {
     );
   }
 
-  // Sort
   switch (sortMode) {
     case "oldest": articles.sort((a, b) => a.date - b.date); break;
     case "source": articles.sort((a, b) => a.source.localeCompare(b.source)); break;
@@ -425,21 +467,18 @@ function applyFilters() {
 function updateSourceFilter(articles) {
   const sources = [...new Set(articles.map(a => a.source))].sort();
   const sel = $("#source-filter");
-  const current = sel.value;
+  const cur = sel.value;
   sel.innerHTML = `<option value="all">All Sources</option>` +
     sources.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
-  sel.value = sources.includes(current) ? current : "all";
+  sel.value = sources.includes(cur) ? cur : "all";
   sourceFilter = sel.value;
 }
 
-// ==========================================
-// Render
-// ==========================================
+// === Render ===
 function renderArticles() {
   const container = $("#articles-container");
   container.className = "articles-container " + viewMode + "-view";
 
-  // Update stats bar
   const rangeLabels = {
     today: "Today", yesterday: "Yesterday", "this-week": "This Week",
     "last-week": "Last Week", "this-month": "This Month", all: "All Time"
@@ -458,8 +497,7 @@ function renderArticles() {
   $("#no-results").style.display = "none";
 
   // Hero
-  const hero = filteredArticles[0];
-  $("#hero-section").innerHTML = heroHTML(hero, 0);
+  $("#hero-section").innerHTML = heroHTML(filteredArticles[0], 0);
   $("#hero-section").style.display = "block";
 
   // Grid
@@ -468,132 +506,108 @@ function renderArticles() {
   displayedCount = count;
   container.innerHTML = rest.slice(0, count).map((a, i) => cardHTML(a, i + 1)).join("");
   container.style.display = viewMode === "grid" ? "grid" : "flex";
-
   $("#load-more-wrap").style.display = count < rest.length ? "block" : "none";
 
   attachCardListeners();
 }
 
 function heroHTML(a, idx) {
-  const timeAgo = ago(a.date);
-  const readTime = readingTime(a.excerpt);
+  const t = ago(a.date);
+  const rt = readingTime(a.excerpt);
   const isRead = readArticles.includes(a.id);
   const img = a.image
-    ? `<div class="hero-image-wrap"><img class="hero-image" src="${esc(a.image)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'hero-image-placeholder\\'>${CAT_ICONS_HTML[a.category] || CAT_ICONS_HTML.top}</div>'"></div>`
-    : `<div class="hero-image-wrap"><div class="hero-image-placeholder">${CAT_ICONS_HTML[a.category] || CAT_ICONS_HTML.top}</div></div>`;
-  return `
-    <article class="hero-card" data-index="${idx}" tabindex="0" role="button">
-      ${img}
-      <div class="hero-body">
-        <div class="hero-category">${esc(a.category)}</div>
-        <h2 class="hero-title">${esc(a.title)}</h2>
-        <p class="hero-excerpt">${esc(a.excerpt)}</p>
-        <div class="hero-meta">
-          <span class="hero-source">${esc(a.source)}</span>
-          <span>${timeAgo}</span>
-          <span class="hero-reading-time">${readTime} min read</span>
-          ${isRead ? '<span style="opacity:0.5">Read</span>' : ""}
-        </div>
+    ? `<div class="hero-image-wrap"><img class="hero-image" src="${esc(a.image)}" alt="" loading="eager" onerror="this.parentElement.innerHTML='<div class=\\'hero-image-placeholder\\'>${CAT_HTML[a.category]||CAT_HTML.top}</div>'"></div>`
+    : `<div class="hero-image-wrap"><div class="hero-image-placeholder">${CAT_HTML[a.category]||CAT_HTML.top}</div></div>`;
+  return `<article class="hero-card" data-index="${idx}" tabindex="0" role="button" aria-label="${esc(a.title)}">
+    ${img}
+    <div class="hero-body">
+      <div class="hero-category">${esc(a.category)}</div>
+      <h2 class="hero-title">${esc(a.title)}</h2>
+      <p class="hero-excerpt">${esc(a.excerpt)}</p>
+      <div class="hero-meta">
+        <span class="hero-source">${esc(a.source)}</span>
+        <span>${t}</span>
+        <span class="reading-time-badge">${rt} min read</span>
+        ${isRead ? '<span style="opacity:0.5">Read</span>' : ""}
       </div>
-    </article>`;
+    </div>
+  </article>`;
 }
 
 function cardHTML(a, idx) {
-  const timeAgo = ago(a.date);
-  const readTime = readingTime(a.excerpt);
-  const isBookmarked = bookmarks.some(b => b.link === a.link);
-  const isRead = readArticles.includes(a.id);
+  const t = ago(a.date);
+  const rt = readingTime(a.excerpt);
+  const isB = bookmarks.some(b => b.link === a.link);
+  const isR = readArticles.includes(a.id);
   const img = a.image
-    ? `<div class="card-image-wrap"><img class="card-image" src="${esc(a.image)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'card-image-placeholder\\'>${CAT_ICONS_HTML[a.category] || CAT_ICONS_HTML.top}</div>'"></div>`
-    : `<div class="card-image-wrap"><div class="card-image-placeholder">${CAT_ICONS_HTML[a.category] || CAT_ICONS_HTML.top}</div></div>`;
-  return `
-    <article class="article-card" data-index="${idx}" tabindex="0" role="button">
-      ${isRead ? '<div class="read-indicator">Read</div>' : ""}
-      ${img}
-      <div class="card-body">
-        <div class="card-category">${esc(a.category)}</div>
-        <h3 class="card-title">${esc(a.title)}</h3>
-        <p class="card-excerpt">${esc(a.excerpt)}</p>
-        <div class="card-footer">
-          <div class="card-meta">
-            <span class="card-source">${esc(a.source)}</span>
-            <span>${timeAgo}</span>
-            <span class="card-reading-time">${readTime}m</span>
-          </div>
-          <div class="card-actions">
-            <button class="bookmark-btn ${isBookmarked ? "active" : ""}" data-link="${esc(a.link)}" title="Save article">${isBookmarked ? "&#9733;" : "&#9734;"}</button>
-            <button class="share-btn" data-title="${esc(a.title)}" data-link="${esc(a.link)}" title="Copy link">&#128279;</button>
-          </div>
+    ? `<div class="card-image-wrap"><img class="card-image" src="${esc(a.image)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'card-image-placeholder\\'>${CAT_HTML[a.category]||CAT_HTML.top}</div>'"></div>`
+    : `<div class="card-image-wrap"><div class="card-image-placeholder">${CAT_HTML[a.category]||CAT_HTML.top}</div></div>`;
+  return `<article class="article-card" data-index="${idx}" tabindex="0" role="button" aria-label="${esc(a.title)}">
+    ${isR ? '<div class="read-indicator">Read</div>' : ""}
+    ${img}
+    <div class="card-body">
+      <div class="card-category">${esc(a.category)}</div>
+      <h3 class="card-title">${esc(a.title)}</h3>
+      <p class="card-excerpt">${esc(a.excerpt)}</p>
+      <div class="card-footer">
+        <div class="card-meta">
+          <span class="card-source">${esc(a.source)}</span>
+          <span>${t}</span>
+          <span class="reading-time-badge">${rt}m</span>
+        </div>
+        <div class="card-actions">
+          <button class="bookmark-btn ${isB?"active":""}" data-link="${esc(a.link)}" aria-label="${isB?"Remove bookmark":"Bookmark"}">${isB?"&#9733;":"&#9734;"}</button>
+          <button class="share-btn" data-link="${esc(a.link)}" data-title="${esc(a.title)}" aria-label="Share">&#128279;</button>
         </div>
       </div>
-    </article>`;
+    </div>
+  </article>`;
 }
 
 function attachCardListeners() {
   $$(".hero-card, .article-card").forEach(card => {
     card.addEventListener("click", e => {
       if (e.target.closest(".bookmark-btn") || e.target.closest(".share-btn")) return;
-      const idx = parseInt(card.dataset.index);
-      openModal(filteredArticles[idx]);
+      openModal(filteredArticles[parseInt(card.dataset.index)]);
     });
     card.addEventListener("keydown", e => {
-      if (e.key === "Enter") {
-        const idx = parseInt(card.dataset.index);
-        openModal(filteredArticles[idx]);
-      }
+      if (e.key === "Enter") openModal(filteredArticles[parseInt(card.dataset.index)]);
     });
   });
-
   $$(".bookmark-btn").forEach(btn => {
-    btn.addEventListener("click", e => {
-      e.stopPropagation();
-      toggleBookmark(btn.dataset.link);
-    });
+    btn.addEventListener("click", e => { e.stopPropagation(); toggleBookmark(btn.dataset.link); });
   });
-
   $$(".share-btn").forEach(btn => {
     btn.addEventListener("click", e => {
       e.stopPropagation();
-      copyToClipboard(btn.dataset.link, "Link copied!");
+      if (navigator.share) {
+        navigator.share({ title: btn.dataset.title, url: btn.dataset.link }).catch(() => {});
+      } else {
+        copyLink(btn.dataset.link, "Link copied!");
+      }
     });
   });
 }
 
-// ==========================================
-// Ticker
-// ==========================================
+// === Ticker ===
 function populateTicker(articles) {
   const items = articles.map(a => `<span>${esc(a.title)}</span>`).join("");
   $("#ticker-scroll").innerHTML = items + items;
 }
 
-// ==========================================
-// Trending Topics
-// ==========================================
+// === Trending ===
 function extractTrending(articles) {
-  const stopWords = new Set(["the","a","an","in","on","at","to","for","of","and","is","are","was","were","be","been","with","this","that","from","or","by","as","it","its","has","have","had","not","but","what","all","can","will","do","did","say","says","said","new","more","than","how","about","after","over","into","up","out","no","just","also","one","two","their","our","his","her","he","she","they","we","you","your","my","us"]);
-  const wordCount = {};
+  const stops = new Set(["the","a","an","in","on","at","to","for","of","and","is","are","was","were","be","been","with","this","that","from","or","by","as","it","its","has","have","had","not","but","what","all","can","will","do","did","say","says","said","new","more","than","how","about","after","over","into","just","also","one","two","their","our","his","her","he","she","they","we","you","your","my","us","up","out","no","who","which","when","where","been","being","would","could","should","may","might"]);
+  const counts = {};
   articles.forEach(a => {
     const words = (a.title + " " + a.excerpt).toLowerCase().replace(/[^a-z\s]/g, "").split(/\s+/);
     const seen = new Set();
     words.forEach(w => {
-      if (w.length > 3 && !stopWords.has(w) && !seen.has(w)) {
-        seen.add(w);
-        wordCount[w] = (wordCount[w] || 0) + 1;
-      }
+      if (w.length > 3 && !stops.has(w) && !seen.has(w)) { seen.add(w); counts[w] = (counts[w] || 0) + 1; }
     });
   });
-
-  const trending = Object.entries(wordCount)
-    .filter(([, c]) => c >= 2)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 12)
-    .map(([w]) => w);
-
-  $("#trending-tags").innerHTML = trending.map(t =>
-    `<span class="trending-tag" data-term="${esc(t)}">${t}</span>`
-  ).join("");
-
+  const trending = Object.entries(counts).filter(([,c]) => c >= 2).sort((a,b) => b[1]-a[1]).slice(0, 12).map(([w]) => w);
+  $("#trending-tags").innerHTML = trending.map(t => `<button class="trending-tag" data-term="${esc(t)}">${t}</button>`).join("");
   $$(".trending-tag").forEach(tag => {
     tag.addEventListener("click", () => {
       $("#search-input").value = tag.dataset.term;
@@ -601,51 +615,57 @@ function extractTrending(articles) {
       $("#search-clear").style.display = "block";
       displayedCount = 0;
       applyFilters();
-      toast(`Searching: ${tag.dataset.term}`);
     });
   });
 }
 
-// ==========================================
-// Modal
-// ==========================================
+// === Modal ===
 function openModal(article) {
   if (!article) return;
   currentModalArticle = article;
 
-  // Mark as read
+  // Mark read
   if (!readArticles.includes(article.id)) {
     readArticles.push(article.id);
     if (readArticles.length > 500) readArticles = readArticles.slice(-500);
     localStorage.setItem("tdb_read", JSON.stringify(readArticles));
   }
 
-  const isBookmarked = bookmarks.some(b => b.link === article.link);
-  $("#modal-bookmark").innerHTML = isBookmarked ? "&#9733;" : "&#9734;";
-  $("#modal-bookmark").classList.toggle("active", isBookmarked);
+  const isB = bookmarks.some(b => b.link === article.link);
+  $("#modal-bookmark").innerHTML = isB ? "&#9733;" : "&#9734;";
+  $("#modal-bookmark").classList.toggle("active", isB);
 
-  const img = article.image
-    ? `<img class="modal-image" src="${esc(article.image)}" alt="" onerror="this.style.display='none'">`
-    : "";
+  const img = article.image ? `<img class="modal-image" src="${esc(article.image)}" alt="" onerror="this.style.display='none'">` : "";
   const timeStr = article.date.toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "numeric", minute: "2-digit"
   });
-  const readTime = readingTime(article.excerpt);
+  const rt = readingTime(article.excerpt);
 
   $("#modal-body").innerHTML = `
     ${img}
     <div class="modal-category">${esc(article.category)}</div>
-    <h2 class="modal-title">${esc(article.title)}</h2>
+    <h2 class="modal-title" id="modal-article-title">${esc(article.title)}</h2>
     <div class="modal-meta">
       <span><strong>${esc(article.source)}</strong></span>
       <span>${timeStr}</span>
-      <span>${readTime} min read</span>
+      <span>${rt} min read</span>
     </div>
-    <div class="modal-text">${esc(article.excerpt)}${article.excerpt.length >= 380 ? "..." : ""}</div>
+    <div class="modal-text">${esc(article.excerpt)}${article.excerpt.length >= 430 ? "..." : ""}</div>
     <a class="read-full" href="${esc(article.link)}" target="_blank" rel="noopener">Read Full Article \u2192</a>`;
 
   $("#modal-overlay").classList.add("open");
   document.body.style.overflow = "hidden";
+  $("#reading-progress-bar").style.width = "0";
+
+  // Reading progress
+  const mc = $("#modal-content");
+  mc.onscroll = () => {
+    const pct = mc.scrollTop / (mc.scrollHeight - mc.clientHeight);
+    $("#reading-progress-bar").style.width = Math.min(100, Math.round(pct * 100)) + "%";
+  };
+
+  // Focus trap
+  trapFocus($("#modal-content"));
   updateStats();
 }
 
@@ -654,11 +674,30 @@ function closeModal() {
   document.body.style.overflow = "";
   stopTTS();
   currentModalArticle = null;
+  const mc = $("#modal-content");
+  mc.onscroll = null;
 }
 
-// ==========================================
-// TTS (Text-to-Speech — free, built-in)
-// ==========================================
+// === Focus Trap ===
+function trapFocus(el) {
+  const focusable = el.querySelectorAll('button, a, input, [tabindex]:not([tabindex="-1"])');
+  if (focusable.length === 0) return;
+  focusable[0].focus();
+  el.addEventListener("keydown", function handler(e) {
+    if (e.key !== "Tab") return;
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    if (!$("#modal-overlay").classList.contains("open")) {
+      el.removeEventListener("keydown", handler);
+    }
+  });
+}
+
+// === TTS ===
 function toggleTTS() {
   if (!currentModalArticle) return;
   if (speechSynthesis.speaking) {
@@ -667,51 +706,41 @@ function toggleTTS() {
     toast("Stopped reading");
     return;
   }
-  ttsUtterance = new SpeechSynthesisUtterance(
-    currentModalArticle.title + ". " + currentModalArticle.excerpt
-  );
-  ttsUtterance.rate = 0.9;
-  ttsUtterance.onend = () => $("#modal-tts").classList.remove("active");
-  speechSynthesis.speak(ttsUtterance);
+  const u = new SpeechSynthesisUtterance(currentModalArticle.title + ". " + currentModalArticle.excerpt);
+  u.rate = 0.9;
+  u.onend = () => $("#modal-tts").classList.remove("active");
+  speechSynthesis.speak(u);
   $("#modal-tts").classList.add("active");
   toast("Reading aloud...");
 }
 
-function stopTTS() {
-  speechSynthesis.cancel();
-  ttsUtterance = null;
-}
+function stopTTS() { speechSynthesis.cancel(); }
 
-// ==========================================
-// Bookmarks
-// ==========================================
+// === Bookmarks ===
 function toggleBookmark(link) {
   const idx = bookmarks.findIndex(b => b.link === link);
   if (idx >= 0) {
     bookmarks.splice(idx, 1);
     toast("Removed from saved");
   } else {
-    const article = allArticles.find(a => a.link === link) || currentModalArticle;
-    if (article) {
-      bookmarks.push({ title: article.title, link: article.link, date: Date.now() });
-      toast("Article saved!");
-    }
+    const a = allArticles.find(x => x.link === link) || currentModalArticle;
+    if (a) { bookmarks.push({ title: a.title, link: a.link, date: Date.now() }); toast("Article saved!"); }
   }
   localStorage.setItem("tdb_bookmarks", JSON.stringify(bookmarks));
   updateBookmarks();
+  updateBookmarkBadge();
   updateStats();
   renderArticles();
 }
 
 function updateBookmarks() {
-  const w = $("#bookmarks-widget");
-  const list = $("#bookmarks-list");
+  const w = $("#bookmarks-widget"), list = $("#bookmarks-list");
   if (!bookmarks.length) { w.style.display = "none"; return; }
   w.style.display = "block";
   list.innerHTML = bookmarks.slice().reverse().map(b =>
     `<div class="bookmark-item">
       <a href="${esc(b.link)}" target="_blank" rel="noopener">${esc(b.title)}</a>
-      <button class="bookmark-remove" data-link="${esc(b.link)}" title="Remove">&times;</button>
+      <button class="bookmark-remove" data-link="${esc(b.link)}" aria-label="Remove">&times;</button>
     </div>`
   ).join("");
   list.querySelectorAll(".bookmark-remove").forEach(btn => {
@@ -719,101 +748,147 @@ function updateBookmarks() {
   });
 }
 
-// ==========================================
-// Stats
-// ==========================================
+function updateBookmarkBadge() {
+  const badge = $("#bookmark-badge");
+  if (bookmarks.length > 0) {
+    badge.style.display = "flex";
+    badge.textContent = bookmarks.length;
+  } else {
+    badge.style.display = "none";
+  }
+}
+
+// === Stats ===
 function updateStats() {
   $("#stat-read").textContent = readArticles.length;
   $("#stat-bookmarked").textContent = bookmarks.length;
   $("#stat-categories").textContent = categoriesVisited.size;
 }
 
-// ==========================================
-// Toast
-// ==========================================
-function toast(msg) {
-  const t = document.createElement("div");
-  t.className = "toast";
-  t.textContent = msg;
-  $("#toast-container").appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+// === Infinite Scroll ===
+function setupInfiniteScroll() {
+  const sentinel = $("#scroll-sentinel");
+  if (!sentinel) return;
+  const obs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting && infiniteScrollEnabled && displayedCount < filteredArticles.length - 1) {
+      renderArticles();
+    }
+  }, { rootMargin: "200px" });
+  obs.observe(sentinel);
 }
 
-// ==========================================
-// Clipboard
-// ==========================================
-async function copyToClipboard(text, msg) {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast(msg || "Copied!");
-  } catch {
-    toast("Couldn't copy");
-  }
+// === Pull to Refresh (mobile touch) ===
+function setupPullToRefresh() {
+  let startY = 0, pulling = false;
+  const ptr = $("#pull-refresh");
+
+  document.addEventListener("touchstart", e => {
+    if (window.scrollY === 0 && e.touches.length === 1) {
+      startY = e.touches[0].clientY;
+      pulling = true;
+    }
+  }, { passive: true });
+
+  document.addEventListener("touchmove", e => {
+    if (!pulling) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 60 && window.scrollY === 0) {
+      ptr.classList.add("visible");
+    }
+  }, { passive: true });
+
+  document.addEventListener("touchend", () => {
+    if (ptr.classList.contains("visible")) {
+      ptr.classList.remove("visible");
+      loadCategory(currentCategory);
+      toast("Refreshing...");
+    }
+    pulling = false;
+  }, { passive: true });
 }
 
-// ==========================================
-// Listeners
-// ==========================================
+// === Modal Swipe to Close (mobile) ===
+function setupModalSwipe() {
+  const mc = $("#modal-content");
+  let startY = 0, currentY = 0, dragging = false;
+
+  mc.addEventListener("touchstart", e => {
+    if (mc.scrollTop <= 0) {
+      startY = e.touches[0].clientY;
+      dragging = true;
+    }
+  }, { passive: true });
+
+  mc.addEventListener("touchmove", e => {
+    if (!dragging) return;
+    currentY = e.touches[0].clientY - startY;
+    if (currentY > 0) {
+      mc.style.transform = `translateY(${Math.min(currentY, 200)}px)`;
+      mc.style.transition = "none";
+    }
+  }, { passive: true });
+
+  mc.addEventListener("touchend", () => {
+    if (!dragging) return;
+    dragging = false;
+    mc.style.transition = "transform 0.3s ease";
+    if (currentY > 100) {
+      closeModal();
+    }
+    mc.style.transform = "";
+    currentY = 0;
+  }, { passive: true });
+}
+
+// === Listeners ===
 function setupListeners() {
   // Nav
   $$(".nav-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       timeRange = "today";
-      $$("#time-pills .pill").forEach(p => p.classList.toggle("active", p.dataset.range === "today"));
+      $$("#time-pills .pill").forEach(p => {
+        const isToday = p.dataset.range === "today";
+        p.classList.toggle("active", isToday);
+        p.setAttribute("aria-checked", isToday);
+      });
       loadCategory(btn.dataset.category);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
   });
 
-  // Time range pills
+  // Time range
   $$("#time-pills .pill").forEach(pill => {
     pill.addEventListener("click", () => {
-      $$("#time-pills .pill").forEach(p => p.classList.remove("active"));
+      $$("#time-pills .pill").forEach(p => { p.classList.remove("active"); p.setAttribute("aria-checked", "false"); });
       pill.classList.add("active");
+      pill.setAttribute("aria-checked", "true");
       timeRange = pill.dataset.range;
       displayedCount = 0;
-
-      // If we only have today's articles cached and user wants older, show what we have
-      // RSS feeds typically contain ~1 week of articles
-      if (["last-week", "this-month", "all"].includes(timeRange) && allArticles.length < 5) {
-        // Try reloading to get max articles
-        loadCategory(currentCategory);
-      } else {
-        applyFilters();
-      }
+      applyFilters();
     });
   });
 
   // Sort
-  $("#sort-select").addEventListener("change", e => {
-    sortMode = e.target.value;
-    displayedCount = 0;
-    applyFilters();
-  });
+  $("#sort-select").addEventListener("change", e => { sortMode = e.target.value; displayedCount = 0; applyFilters(); });
 
   // Source filter
-  $("#source-filter").addEventListener("change", e => {
-    sourceFilter = e.target.value;
-    displayedCount = 0;
-    applyFilters();
-  });
+  $("#source-filter").addEventListener("change", e => { sourceFilter = e.target.value; displayedCount = 0; applyFilters(); });
 
-  // Search
-  let searchDebounce;
+  // Search (debounced)
+  let searchTimer;
   $("#search-input").addEventListener("input", () => {
-    clearTimeout(searchDebounce);
-    searchDebounce = setTimeout(() => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
       searchQuery = $("#search-input").value.trim().toLowerCase();
       $("#search-clear").style.display = searchQuery ? "block" : "none";
       displayedCount = 0;
       applyFilters();
-    }, 200);
+    }, 250);
   });
   $("#search-clear").addEventListener("click", () => {
-    $("#search-input").value = "";
-    searchQuery = "";
+    $("#search-input").value = ""; searchQuery = "";
     $("#search-clear").style.display = "none";
-    displayedCount = 0;
-    applyFilters();
+    displayedCount = 0; applyFilters();
   });
 
   // Load more
@@ -821,36 +896,32 @@ function setupListeners() {
 
   // Reset filters
   $("#reset-filters-btn").addEventListener("click", () => {
-    searchQuery = "";
-    timeRange = "all";
-    sourceFilter = "all";
-    sortMode = "newest";
-    $("#search-input").value = "";
-    $("#search-clear").style.display = "none";
-    $("#sort-select").value = "newest";
-    $("#source-filter").value = "all";
-    $$("#time-pills .pill").forEach(p => p.classList.toggle("active", p.dataset.range === "all"));
-    displayedCount = 0;
-    applyFilters();
+    searchQuery = ""; timeRange = "all"; sourceFilter = "all"; sortMode = "newest";
+    $("#search-input").value = ""; $("#search-clear").style.display = "none";
+    $("#sort-select").value = "newest"; $("#source-filter").value = "all";
+    $$("#time-pills .pill").forEach(p => {
+      const isAll = p.dataset.range === "all";
+      p.classList.toggle("active", isAll);
+      p.setAttribute("aria-checked", isAll);
+    });
+    displayedCount = 0; applyFilters();
   });
 
   // Theme
   $("#theme-toggle").addEventListener("click", () => {
-    const t = document.documentElement.getAttribute("data-theme");
-    setTheme(t === "dark" ? "light" : "dark");
+    setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
   });
 
   // Font
-  $("#font-increase").addEventListener("click", () => setFontScale(fontScale + 0.1));
-  $("#font-decrease").addEventListener("click", () => setFontScale(fontScale - 0.1));
+  $("#font-increase").addEventListener("click", () => setFontScale(fontScale + 0.08));
+  $("#font-decrease").addEventListener("click", () => setFontScale(fontScale - 0.08));
 
-  // View mode
+  // View
   $("#view-toggle").addEventListener("click", () => {
     const modes = ["grid", "list", "compact"];
-    const next = modes[(modes.indexOf(viewMode) + 1) % modes.length];
-    setViewMode(next);
+    setViewMode(modes[(modes.indexOf(viewMode) + 1) % modes.length]);
     renderArticles();
-    toast(`${next.charAt(0).toUpperCase() + next.slice(1)} view`);
+    toast(`${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} view`);
   });
 
   // Refresh
@@ -866,46 +937,31 @@ function setupListeners() {
   $("#modal-bookmark").addEventListener("click", () => {
     if (currentModalArticle) {
       toggleBookmark(currentModalArticle.link);
-      const isBookmarked = bookmarks.some(b => b.link === currentModalArticle.link);
-      $("#modal-bookmark").innerHTML = isBookmarked ? "&#9733;" : "&#9734;";
-      $("#modal-bookmark").classList.toggle("active", isBookmarked);
+      const isB = bookmarks.some(b => b.link === currentModalArticle.link);
+      $("#modal-bookmark").innerHTML = isB ? "&#9733;" : "&#9734;";
+      $("#modal-bookmark").classList.toggle("active", isB);
     }
   });
   $("#modal-share").addEventListener("click", () => {
-    if (currentModalArticle) {
-      if (navigator.share) {
-        navigator.share({ title: currentModalArticle.title, url: currentModalArticle.link });
-      } else {
-        copyToClipboard(currentModalArticle.link, "Link copied!");
-      }
+    if (!currentModalArticle) return;
+    if (navigator.share) {
+      navigator.share({ title: currentModalArticle.title, url: currentModalArticle.link }).catch(() => {});
+    } else {
+      copyLink(currentModalArticle.link, "Link copied!");
     }
   });
   $("#modal-tts").addEventListener("click", toggleTTS);
   $("#modal-print").addEventListener("click", () => window.print());
 
   // Sidebar
-  const sidebarOverlay = document.createElement("div");
-  sidebarOverlay.className = "sidebar-overlay";
-  sidebarOverlay.id = "sidebar-overlay";
-  document.body.appendChild(sidebarOverlay);
-
-  $("#sidebar-toggle").addEventListener("click", () => {
-    $("#sidebar").classList.toggle("open");
-    sidebarOverlay.classList.toggle("open");
-  });
-  $("#sidebar-close").addEventListener("click", () => {
-    $("#sidebar").classList.remove("open");
-    sidebarOverlay.classList.remove("open");
-  });
-  sidebarOverlay.addEventListener("click", () => {
-    $("#sidebar").classList.remove("open");
-    sidebarOverlay.classList.remove("open");
-  });
+  $("#sidebar-toggle").addEventListener("click", toggleSidebar);
+  $("#sidebar-close").addEventListener("click", closeSidebar);
+  $("#sidebar-overlay").addEventListener("click", closeSidebar);
 
   // Back to top
   window.addEventListener("scroll", () => {
     $("#back-to-top").classList.toggle("visible", window.scrollY > 400);
-  });
+  }, { passive: true });
   $("#back-to-top").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
   // Retry
@@ -913,66 +969,71 @@ function setupListeners() {
 
   // Clear bookmarks
   $("#clear-bookmarks").addEventListener("click", () => {
-    bookmarks = [];
-    localStorage.setItem("tdb_bookmarks", "[]");
-    updateBookmarks();
-    updateStats();
-    renderArticles();
+    bookmarks = []; localStorage.setItem("tdb_bookmarks", "[]");
+    updateBookmarks(); updateBookmarkBadge(); updateStats(); renderArticles();
     toast("All saved articles cleared");
+  });
+
+  // Install PWA
+  const installBtn = $("#install-btn");
+  if (installBtn) {
+    installBtn.addEventListener("click", async () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const result = await deferredInstallPrompt.userChoice;
+        if (result.outcome === "accepted") toast("App installed!");
+        deferredInstallPrompt = null;
+        $("#install-widget").style.display = "none";
+      }
+    });
+  }
+
+  // Mobile bottom nav
+  $$(".bottom-nav-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const action = btn.dataset.action;
+      $$(".bottom-nav-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      switch (action) {
+        case "home":
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          closeSidebar();
+          break;
+        case "search":
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          closeSidebar();
+          setTimeout(() => $("#search-input").focus(), 300);
+          break;
+        case "bookmarks":
+          toggleSidebar();
+          setTimeout(() => {
+            const bw = $("#bookmarks-widget");
+            if (bw) bw.scrollIntoView({ behavior: "smooth" });
+          }, 350);
+          break;
+        case "sidebar":
+          toggleSidebar();
+          break;
+      }
+    });
   });
 
   // Keyboard shortcuts
   document.addEventListener("keydown", e => {
-    // Don't trigger shortcuts when typing in search
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") {
-      if (e.key === "Escape") {
-        e.target.blur();
-        closeModal();
-      }
+      if (e.key === "Escape") { e.target.blur(); closeModal(); }
       return;
     }
-
     const modal = $("#modal-overlay").classList.contains("open");
-
     switch (e.key) {
-      case "Escape":
-        closeModal();
-        $("#sidebar").classList.remove("open");
-        $("#sidebar-overlay").classList.remove("open");
-        break;
-      case "/":
-        e.preventDefault();
-        $("#search-input").focus();
-        break;
-      case "d":
-      case "D":
-        if (!modal) {
-          const t = document.documentElement.getAttribute("data-theme");
-          setTheme(t === "dark" ? "light" : "dark");
-        }
-        break;
-      case "r":
-      case "R":
-        if (!modal) {
-          loadCategory(currentCategory);
-          toast("Refreshing...");
-        }
-        break;
-      case "j":
-      case "J":
-        if (!modal) navigateCards(1);
-        break;
-      case "k":
-      case "K":
-        if (!modal) navigateCards(-1);
-        break;
-      case "Enter":
-        if (!modal && focusedCardIndex >= 0) {
-          openModal(filteredArticles[focusedCardIndex]);
-        }
-        break;
-      case "s":
-      case "S":
+      case "Escape": closeModal(); closeSidebar(); break;
+      case "/": e.preventDefault(); $("#search-input").focus(); break;
+      case "d": case "D": if (!modal) setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark"); break;
+      case "r": case "R": if (!modal) { loadCategory(currentCategory); toast("Refreshing..."); } break;
+      case "j": case "J": if (!modal) navigateCards(1); break;
+      case "k": case "K": if (!modal) navigateCards(-1); break;
+      case "Enter": if (!modal && focusedCardIndex >= 0) openModal(filteredArticles[focusedCardIndex]); break;
+      case "s": case "S":
         if (modal && currentModalArticle) {
           toggleBookmark(currentModalArticle.link);
           const isB = bookmarks.some(b => b.link === currentModalArticle.link);
@@ -982,12 +1043,19 @@ function setupListeners() {
           toggleBookmark(filteredArticles[focusedCardIndex].link);
         }
         break;
-      case "t":
-      case "T":
-        if (modal) toggleTTS();
-        break;
+      case "t": case "T": if (modal) toggleTTS(); break;
     }
   });
+}
+
+function toggleSidebar() {
+  $("#sidebar").classList.toggle("open");
+  $("#sidebar-overlay").classList.toggle("open");
+}
+
+function closeSidebar() {
+  $("#sidebar").classList.remove("open");
+  $("#sidebar-overlay").classList.remove("open");
 }
 
 function navigateCards(dir) {
@@ -998,33 +1066,5 @@ function navigateCards(dir) {
   cards[focusedCardIndex].scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-// ==========================================
-// Helpers
-// ==========================================
-function ago(date) {
-  const diff = Date.now() - date.getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return "Yesterday";
-  if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function readingTime(text) {
-  return Math.max(1, Math.round((text.split(/\s+/).length) / 200));
-}
-
-function esc(str) {
-  const d = document.createElement("div");
-  d.textContent = str;
-  return d.innerHTML;
-}
-
-// ==========================================
-// Boot
-// ==========================================
+// === Boot ===
 init();
