@@ -714,17 +714,35 @@ function applyFilters() {
 
   if (searchQuery) {
     const q = searchQuery.toLowerCase();
-    articles = articles.filter(a =>
-      a.title.toLowerCase().includes(q) ||
-      a.excerpt.toLowerCase().includes(q) ||
-      a.source.toLowerCase().includes(q)
-    );
-  }
-
-  switch (sortMode) {
-    case "oldest": articles.sort((a, b) => a.date - b.date); break;
-    case "source": articles.sort((a, b) => a.source.localeCompare(b.source)); break;
-    default: articles.sort((a, b) => b.date - a.date);
+    const qWords = q.split(/\s+/).filter(w => w.length > 1);
+    articles = articles.map(a => {
+      const tL = a.title.toLowerCase();
+      const eL = a.excerpt.toLowerCase();
+      const sL = a.source.toLowerCase();
+      let score = 0;
+      // Exact phrase match in title = highest
+      if (tL.includes(q)) score += 100;
+      // Exact phrase match in excerpt
+      if (eL.includes(q)) score += 40;
+      // Source name match
+      if (sL.includes(q)) score += 30;
+      // Individual word matches
+      qWords.forEach(w => {
+        if (tL.includes(w)) score += 15;
+        if (eL.includes(w)) score += 5;
+      });
+      // Title starts with query
+      if (tL.startsWith(q)) score += 50;
+      return { ...a, _searchScore: score };
+    }).filter(a => a._searchScore > 0);
+    // Sort by relevance (highest score first)
+    articles.sort((a, b) => b._searchScore - a._searchScore);
+  } else {
+    switch (sortMode) {
+      case "oldest": articles.sort((a, b) => a.date - b.date); break;
+      case "source": articles.sort((a, b) => a.source.localeCompare(b.source)); break;
+      default: articles.sort((a, b) => b.date - a.date);
+    }
   }
 
   filteredArticles = articles;

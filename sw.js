@@ -1,4 +1,4 @@
-const CACHE_NAME = "tdb-v6";
+const CACHE_NAME = "tdb-v7";
 const SHELL_ASSETS = [
   "./",
   "./index.html",
