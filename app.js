@@ -838,12 +838,18 @@ function attachCardListeners() {
     card.addEventListener("click", e => {
       if (e.target.closest(".bookmark-btn") || e.target.closest(".share-btn")) return;
       const article = filteredArticles[parseInt(card.dataset.index)];
-      if (article) openModal(article);
+      if (article) {
+        markRead(article);
+        if (article.link) window.open(article.link, "_blank", "noopener");
+      }
     });
     card.addEventListener("keydown", e => {
       if (e.key === "Enter") {
         const article = filteredArticles[parseInt(card.dataset.index)];
-        if (article) openModal(article);
+        if (article) {
+          markRead(article);
+          if (article.link) window.open(article.link, "_blank", "noopener");
+        }
       }
     });
   });
@@ -1750,7 +1756,7 @@ function setupListeners() {
       case "r": case "R": if (!modal) { loadCategory(currentCategory); toast("Refreshing..."); } break;
       case "j": case "J": if (!modal) navigateCards(1); break;
       case "k": case "K": if (!modal) navigateCards(-1); break;
-      case "Enter": if (!modal && focusedCardIndex >= 0) { const a = filteredArticles[focusedCardIndex]; if (a) openModal(a); } break;
+      case "Enter": if (!modal && focusedCardIndex >= 0) { const a = filteredArticles[focusedCardIndex]; if (a) { markRead(a); if (a.link) window.open(a.link, "_blank", "noopener"); } } break;
       case "s": case "S":
         if (modal && currentModalArticle) {
           toggleBookmark(currentModalArticle.link);
