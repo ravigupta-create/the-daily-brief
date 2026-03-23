@@ -314,7 +314,7 @@ body.offline .offline-banner { display: block; }
   min-height: 44px;
 }
 .nav-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
-.nav-btn.active { color: #fff; border-bottom-color: var(--accent); background: rgba(255,255,255,0.08); }
+.nav-btn.active { color: #fff; background: rgba(255,255,255,0.08); }
 
 /* === Pull to Refresh === */
 .pull-refresh {
@@ -457,7 +457,7 @@ body.offline .offline-banner { display: block; }
   display: grid; grid-template-columns: 1.3fr 1fr;
   background: var(--bg-card); border-radius: var(--radius-lg);
   overflow: hidden; box-shadow: var(--shadow);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-light); position: relative;
   cursor: pointer; transition: box-shadow 0.3s, transform var(--transition);
 }
 .hero-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-3px); }
@@ -1237,22 +1237,12 @@ body.focus-mode .modal-body .modal-meta {
 /* === 11. Category Colors === */
 .card-category,
 .hero-category,
-.modal-category {
-  color: inherit;
-  background: currentColor;
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-.card-category,
-.hero-category,
 .modal-body .modal-category {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 10px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  -webkit-background-clip: unset;
-  background-clip: unset;
+  /* Uses inline style color; background matches it at 12% opacity */
+  background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
 /* === 12. Newspaper View === */

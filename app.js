@@ -19,12 +19,7 @@ window.addEventListener("beforeinstallprompt", (e) => {
 });
 
 // === Constants ===
-const RSS_PROXIES = [
-  "https://api.rss2json.com/v1/api.json?rss_url=",
-  "https://api.allorigins.win/raw?url=",
-];
-let currentProxy = 0;
-const RSS_PROXY = () => RSS_PROXIES[currentProxy];
+const RSS_PROXY = "https://api.rss2json.com/v1/api.json?rss_url=";
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
 const PAGE_SIZE = 20;
 
@@ -418,13 +413,23 @@ function startSessionTimer() {
 // === Theme ===
 function detectTheme() {
   const saved = localStorage.getItem("tdb_theme");
-  if (saved === "auto" || !saved) {
-    const h = new Date().getHours();
-    setTheme(h >= 20 || h < 7 ? "dark" : "light", true);
-    if (!saved) return;
-  } else {
-    setTheme(saved);
+  if (!saved) {
+    // No preference: use OS preference
+    if (window.matchMedia("(prefers-color-scheme: dark)").matches) setTheme("dark");
+    else setTheme("light");
+    return;
   }
+  if (saved === "auto") {
+    // Auto mode: apply time-based theme but show auto icon
+    const h = new Date().getHours();
+    const effective = h >= 20 || h < 7 ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", effective);
+    const el = $("#theme-icon");
+    if (el) el.innerHTML = "&#128260;";
+    $$(".theme-option").forEach(o => o.classList.toggle("active", o.dataset.theme === "auto"));
+    return;
+  }
+  setTheme(saved);
 }
 
 function setTheme(theme, isAuto) {
@@ -553,7 +558,7 @@ function setupOfflineDetection() {
 // === Fetch RSS ===
 async function fetchFeed(feed, category) {
   try {
-    const res = await fetch(`${RSS_PROXIES[0]}${encodeURIComponent(feed.url)}`, { signal: AbortSignal.timeout(10000) });
+    const res = await fetch(`${RSS_PROXY}${encodeURIComponent(feed.url)}`, { signal: AbortSignal.timeout(10000) });
     const data = await res.json();
     if (data.status !== "ok") return [];
     return (data.items || []).map(item => ({
@@ -833,18 +838,12 @@ function attachCardListeners() {
     card.addEventListener("click", e => {
       if (e.target.closest(".bookmark-btn") || e.target.closest(".share-btn")) return;
       const article = filteredArticles[parseInt(card.dataset.index)];
-      if (article) {
-        markRead(article);
-        if (article.link) window.open(article.link, "_blank", "noopener");
-      }
+      if (article) openModal(article);
     });
     card.addEventListener("keydown", e => {
       if (e.key === "Enter") {
         const article = filteredArticles[parseInt(card.dataset.index)];
-        if (article) {
-          markRead(article);
-          if (article.link) window.open(article.link, "_blank", "noopener");
-        }
+        if (article) openModal(article);
       }
     });
   });
@@ -1071,22 +1070,34 @@ const ACCENT_MAP = {
 function getVoicesForAccent(accent) {
   const voices = speechSynthesis.getVoices();
   const langCodes = ACCENT_MAP[accent] || ACCENT_MAP["regular"];
-  let filtered = voices.filter(v => langCodes.some(code => v.lang.startsWith(code.split("-")[0]) && v.lang.includes(code.split("-")[1] || "")));
-  // Fallback: if accent not found, try broader English match
-  if (filtered.length === 0) {
-    filtered = voices.filter(v => v.lang.startsWith("en"));
-  }
-  // For Scottish, try to find voices with "Scottish" in name
+  // Match voices whose lang exactly matches one of the accent's lang codes
+  // (normalize underscores to hyphens for comparison)
+  let filtered = voices.filter(v => {
+    const norm = v.lang.replace(/_/g, "-");
+    return langCodes.some(code => {
+      const normCode = code.replace(/_/g, "-");
+      return norm === normCode || norm.startsWith(normCode + "-");
+    });
+  });
+  // For Scottish, prefer voices with "Scottish" in name
   if (accent === "scottish") {
     const scottish = voices.filter(v => v.name.toLowerCase().includes("scot"));
     if (scottish.length > 0) filtered = scottish;
   }
-  // For Indian, also check for Hindi voices or "Indian" in name
+  // For Indian, also check for voices with "Indian" in name
   if (accent === "indian") {
     const indian = voices.filter(v => v.name.toLowerCase().includes("indian") || v.lang === "en-IN" || v.lang === "hi-IN");
-    if (indian.length > 0) filtered = [...new Set([...indian, ...filtered])];
+    if (indian.length > 0) {
+      // Deduplicate by voice name
+      const names = new Set(filtered.map(v => v.name));
+      indian.forEach(v => { if (!names.has(v.name)) { filtered.push(v); names.add(v.name); } });
+    }
   }
-  return filtered.length > 0 ? filtered : voices.filter(v => v.lang.startsWith("en")).slice(0, 5);
+  // Fallback: if no accent-specific voices, use all English voices
+  if (filtered.length === 0) {
+    filtered = voices.filter(v => v.lang.replace(/_/g, "-").startsWith("en"));
+  }
+  return filtered.length > 0 ? filtered : voices.slice(0, 5);
 }
 
 function populateTTSVoices() {
@@ -1739,7 +1750,7 @@ function setupListeners() {
       case "r": case "R": if (!modal) { loadCategory(currentCategory); toast("Refreshing..."); } break;
       case "j": case "J": if (!modal) navigateCards(1); break;
       case "k": case "K": if (!modal) navigateCards(-1); break;
-      case "Enter": if (!modal && focusedCardIndex >= 0) { const a = filteredArticles[focusedCardIndex]; if (a) { markRead(a); if (a.link) window.open(a.link, "_blank", "noopener"); } } break;
+      case "Enter": if (!modal && focusedCardIndex >= 0) { const a = filteredArticles[focusedCardIndex]; if (a) openModal(a); } break;
       case "s": case "S":
         if (modal && currentModalArticle) {
           toggleBookmark(currentModalArticle.link);
@@ -1760,10 +1771,10 @@ function setupListeners() {
         }
         break;
       case "p": case "P":
-        if (!modal && e.key === "p") {
-          const cats = ["top","foryou",...Object.keys(FEEDS).filter(c => c !== "top")];
-          const idx = cats.indexOf(currentCategory);
-          if (idx > 0) loadCategory(cats[idx - 1]);
+        if (!modal) {
+          const cats2 = ["top","foryou",...Object.keys(FEEDS).filter(c => c !== "top")];
+          const idx2 = cats2.indexOf(currentCategory);
+          if (idx2 > 0) loadCategory(cats2[idx2 - 1]);
         }
         break;
     }
