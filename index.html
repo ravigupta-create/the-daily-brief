@@ -22,6 +22,9 @@
 <body>
   <a href="#main-content" class="skip-link">Skip to content</a>
 
+  <!-- Confetti canvas for milestones -->
+  <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+
   <!-- Offline banner -->
   <div class="offline-banner" id="offline-banner" role="alert" aria-live="assertive">
     You're offline — showing cached articles
@@ -38,22 +41,35 @@
         <div class="auto-update-indicator" id="auto-update-indicator" title="Auto-refreshes every 15 minutes">
           <span class="pulse-dot"></span>
           <span>Live</span>
+          <span class="new-badge" id="new-badge" style="display:none;">0</span>
         </div>
         <span class="last-updated" id="last-updated"></span>
+        <span class="session-timer" id="session-timer" title="Session reading time">0m</span>
       </div>
       <div class="utility-right">
+        <span class="live-clock" id="live-clock"></span>
         <div class="weather-mini" id="weather-mini" title="Weather">
           <span id="weather-icon-mini">--</span>
           <span id="weather-temp-mini">--</span>
         </div>
+        <button class="icon-btn" id="notif-toggle" title="Toggle notifications" aria-label="Toggle notifications">&#128276;</button>
         <button class="icon-btn" id="font-decrease" title="Decrease font size" aria-label="Decrease font size">A-</button>
         <button class="icon-btn" id="font-increase" title="Increase font size" aria-label="Increase font size">A+</button>
         <button class="icon-btn" id="view-toggle" title="Toggle view mode" aria-label="Toggle view mode">
           <span id="view-icon">&#9638;</span>
         </button>
-        <button class="icon-btn" id="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">
-          <span id="theme-icon">&#9790;</span>
-        </button>
+        <div class="theme-picker-wrap">
+          <button class="icon-btn" id="theme-toggle" title="Change theme" aria-label="Change theme" aria-haspopup="true">
+            <span id="theme-icon">&#9790;</span>
+          </button>
+          <div class="theme-picker" id="theme-picker" role="menu">
+            <button class="theme-option" data-theme="light" role="menuitem">&#9788; Light</button>
+            <button class="theme-option" data-theme="dark" role="menuitem">&#9790; Dark</button>
+            <button class="theme-option" data-theme="sepia" role="menuitem">&#128214; Sepia</button>
+            <button class="theme-option" data-theme="high-contrast" role="menuitem">&#9673; High Contrast</button>
+            <button class="theme-option" data-theme="auto" role="menuitem">&#128260; Auto</button>
+          </div>
+        </div>
         <button class="icon-btn" id="refresh-btn" title="Refresh now" aria-label="Refresh articles">&#8635;</button>
       </div>
     </div>
@@ -81,14 +97,20 @@
   <!-- Navigation -->
   <nav class="main-nav" id="main-nav" aria-label="News categories">
     <div class="nav-inner">
-      <div class="nav-categories" role="tablist">
+      <div class="nav-categories" id="nav-categories" role="tablist">
         <button class="nav-btn active" data-category="top" role="tab" aria-selected="true">Top Stories</button>
+        <button class="nav-btn" data-category="foryou" role="tab" aria-selected="false">&#10024; For You</button>
         <button class="nav-btn" data-category="world" role="tab" aria-selected="false">World</button>
         <button class="nav-btn" data-category="politics" role="tab" aria-selected="false">Politics</button>
         <button class="nav-btn" data-category="science" role="tab" aria-selected="false">Science</button>
         <button class="nav-btn" data-category="technology" role="tab" aria-selected="false">Technology</button>
         <button class="nav-btn" data-category="business" role="tab" aria-selected="false">Business</button>
         <button class="nav-btn" data-category="health" role="tab" aria-selected="false">Health</button>
+        <button class="nav-btn" data-category="sports" role="tab" aria-selected="false">Sports</button>
+        <button class="nav-btn" data-category="entertainment" role="tab" aria-selected="false">Entertainment</button>
+        <button class="nav-btn" data-category="food" role="tab" aria-selected="false">Food</button>
+        <button class="nav-btn" data-category="travel" role="tab" aria-selected="false">Travel</button>
+        <button class="nav-btn" data-category="education" role="tab" aria-selected="false">Education</button>
         <button class="nav-btn" data-category="arts" role="tab" aria-selected="false">Arts</button>
         <button class="nav-btn" data-category="opinion" role="tab" aria-selected="false">Opinion</button>
         <button class="nav-btn" data-category="climate" role="tab" aria-selected="false">Climate</button>
@@ -221,6 +243,21 @@
       <cite class="quote-author" id="quote-author"></cite>
     </div>
 
+    <div class="widget goal-widget">
+      <h3 class="widget-title">&#127919; Daily Goal</h3>
+      <div class="goal-body">
+        <div class="goal-progress-wrap">
+          <div class="goal-progress-bar" id="goal-progress-bar"></div>
+        </div>
+        <div class="goal-text" id="goal-text">0 / 10 articles today</div>
+        <div class="goal-controls">
+          <button class="goal-btn" id="goal-decrease" aria-label="Decrease goal">-</button>
+          <span id="goal-target">10</span>
+          <button class="goal-btn" id="goal-increase" aria-label="Increase goal">+</button>
+        </div>
+      </div>
+    </div>
+
     <div class="widget trending-widget">
       <h3 class="widget-title">&#128293; Trending Topics</h3>
       <div class="trending-tags" id="trending-tags"></div>
@@ -232,13 +269,26 @@
         <div class="stat-row"><span>Articles read</span><span id="stat-read">0</span></div>
         <div class="stat-row"><span>Bookmarked</span><span id="stat-bookmarked">0</span></div>
         <div class="stat-row"><span>Categories explored</span><span id="stat-categories">0</span></div>
+        <div class="stat-row streak-row"><span>&#128293; Reading streak</span><span id="stat-streak">0 days</span></div>
+        <div class="stat-row"><span>Today's articles</span><span id="stat-today">0</span></div>
+        <div class="stat-row"><span>Favorite source</span><span id="stat-fav-source">--</span></div>
       </div>
+    </div>
+
+    <div class="widget history-widget">
+      <h3 class="widget-title">&#128337; Reading History</h3>
+      <div class="history-list" id="history-list"><div style="color:var(--text-muted);font-size:13px;">No articles read yet</div></div>
     </div>
 
     <div class="widget bookmarks-widget" id="bookmarks-widget" style="display:none;">
       <h3 class="widget-title">&#9733; Saved Articles</h3>
       <div class="bookmarks-list" id="bookmarks-list"></div>
-      <button class="clear-bookmarks" id="clear-bookmarks">Clear All Saved</button>
+      <div class="bookmark-actions">
+        <button class="clear-bookmarks" id="clear-bookmarks">Clear All</button>
+        <button class="export-bookmarks" id="export-bookmarks">Export</button>
+        <label class="import-bookmarks-label" for="import-bookmarks">Import</label>
+        <input type="file" id="import-bookmarks" accept=".json" style="display:none;">
+      </div>
     </div>
 
     <div class="widget keyboard-widget">
@@ -253,6 +303,9 @@
         <div class="shortcut-row"><kbd>D</kbd><span>Dark mode</span></div>
         <div class="shortcut-row"><kbd>/</kbd><span>Focus search</span></div>
         <div class="shortcut-row"><kbd>T</kbd><span>Read aloud</span></div>
+        <div class="shortcut-row"><kbd>F</kbd><span>Focus mode</span></div>
+        <div class="shortcut-row"><kbd>N</kbd><span>Next category</span></div>
+        <div class="shortcut-row"><kbd>P</kbd><span>Previous category</span></div>
       </div>
     </div>
 
@@ -275,12 +328,41 @@
           <button class="modal-action-btn" id="modal-bookmark" title="Bookmark" aria-label="Bookmark article">&#9734;</button>
           <button class="modal-action-btn" id="modal-share" title="Share" aria-label="Share article">&#128279;</button>
           <button class="modal-action-btn" id="modal-tts" title="Read aloud" aria-label="Read article aloud">&#128264;</button>
+          <button class="modal-action-btn" id="modal-focus" title="Focus mode" aria-label="Focus reading mode">&#128065;</button>
           <button class="modal-action-btn" id="modal-print" title="Print" aria-label="Print article">&#128424;</button>
         </div>
+      </div>
+      <!-- TTS controls -->
+      <div class="tts-controls" id="tts-controls" style="display:none;">
+        <label class="tts-label">Speed:</label>
+        <input type="range" id="tts-speed" min="0.5" max="2" step="0.1" value="0.9" class="tts-range">
+        <span id="tts-speed-val">0.9x</span>
+        <label class="tts-label">Voice:</label>
+        <select id="tts-voice" class="tts-voice-select"></select>
       </div>
       <!-- Drag handle for mobile bottom sheet -->
       <div class="modal-drag-handle" id="modal-drag-handle" aria-hidden="true"><div class="drag-bar"></div></div>
       <div class="modal-body" id="modal-body"></div>
+      <!-- Related articles -->
+      <div class="related-articles" id="related-articles" style="display:none;">
+        <h4 class="related-title">Related Articles</h4>
+        <div class="related-list" id="related-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Share popup -->
+  <div class="share-popup" id="share-popup" style="display:none;" role="dialog" aria-label="Share article">
+    <div class="share-popup-content">
+      <h4>Share Article</h4>
+      <div class="share-buttons">
+        <button class="share-btn-social" data-platform="twitter" aria-label="Share on X/Twitter">&#120143; / Twitter</button>
+        <button class="share-btn-social" data-platform="reddit" aria-label="Share on Reddit">Reddit</button>
+        <button class="share-btn-social" data-platform="whatsapp" aria-label="Share on WhatsApp">WhatsApp</button>
+        <button class="share-btn-social" data-platform="email" aria-label="Share via Email">&#9993; Email</button>
+        <button class="share-btn-social" data-platform="copy" aria-label="Copy link">&#128203; Copy Link</button>
+      </div>
+      <button class="share-popup-close" id="share-popup-close">&times;</button>
     </div>
   </div>
 
@@ -318,7 +400,7 @@
         <p>A personal news dashboard. 100% free, no accounts, no tracking.</p>
       </div>
       <div class="footer-sources">
-        <strong>Sources:</strong> NPR, BBC, NY Times, The Guardian, Reuters, and more.
+        <strong>Sources:</strong> NPR, BBC, NY Times, The Guardian, Reuters, Al Jazeera, and more.
       </div>
       <div class="footer-meta">
         <span>Auto-updates every 15 min</span>
