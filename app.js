@@ -26,7 +26,7 @@ const RSS_PROXIES = [
 let currentProxy = 0;
 const RSS_PROXY = () => RSS_PROXIES[currentProxy];
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 20;
 
 const FEEDS = {
   top: [
@@ -35,6 +35,9 @@ const FEEDS = {
     { url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml", name: "NY Times" },
     { url: "https://www.theguardian.com/us-news/rss", name: "The Guardian" },
     { url: "https://www.aljazeera.com/xml/rss/all.xml", name: "Al Jazeera" },
+    { url: "https://abcnews.go.com/abcnews/topstories", name: "ABC News" },
+    { url: "https://feeds.cbsnews.com/CBSNewsMain", name: "CBS News" },
+    { url: "https://rssfeeds.usatoday.com/UsatodaycomNation-TopStories", name: "USA Today" },
   ],
   world: [
     { url: "https://feeds.bbci.co.uk/news/world/rss.xml", name: "BBC World" },
@@ -42,48 +45,58 @@ const FEEDS = {
     { url: "https://www.theguardian.com/world/rss", name: "The Guardian" },
     { url: "https://feeds.npr.org/1004/rss.xml", name: "NPR" },
     { url: "https://www.aljazeera.com/xml/rss/all.xml", name: "Al Jazeera" },
+    { url: "https://abcnews.go.com/abcnews/internationalheadlines", name: "ABC News" },
   ],
   politics: [
     { url: "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml", name: "NY Times" },
     { url: "https://feeds.npr.org/1014/rss.xml", name: "NPR" },
     { url: "https://www.theguardian.com/us-news/us-politics/rss", name: "The Guardian" },
     { url: "https://feeds.bbci.co.uk/news/politics/rss.xml", name: "BBC" },
+    { url: "https://abcnews.go.com/abcnews/politicsheadlines", name: "ABC News" },
+    { url: "https://feeds.cbsnews.com/CBSNews-Politics", name: "CBS News" },
   ],
   science: [
     { url: "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml", name: "NY Times" },
     { url: "https://www.theguardian.com/science/rss", name: "The Guardian" },
     { url: "https://feeds.npr.org/1007/rss.xml", name: "NPR" },
     { url: "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml", name: "BBC" },
+    { url: "https://www.wired.com/feed/category/science/latest/rss", name: "Wired" },
   ],
   technology: [
     { url: "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml", name: "NY Times" },
     { url: "https://www.theguardian.com/technology/rss", name: "The Guardian" },
     { url: "https://feeds.npr.org/1019/rss.xml", name: "NPR" },
     { url: "https://feeds.bbci.co.uk/news/technology/rss.xml", name: "BBC" },
+    { url: "https://www.wired.com/feed/rss", name: "Wired" },
+    { url: "https://techcrunch.com/feed/", name: "TechCrunch" },
   ],
   business: [
     { url: "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml", name: "NY Times" },
     { url: "https://feeds.npr.org/1006/rss.xml", name: "NPR" },
     { url: "https://www.theguardian.com/business/rss", name: "The Guardian" },
     { url: "https://feeds.bbci.co.uk/news/business/rss.xml", name: "BBC" },
+    { url: "https://feeds.cbsnews.com/CBSNews-Business", name: "CBS News" },
   ],
   health: [
     { url: "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml", name: "NY Times" },
     { url: "https://feeds.npr.org/1128/rss.xml", name: "NPR" },
     { url: "https://www.theguardian.com/society/health/rss", name: "The Guardian" },
     { url: "https://feeds.bbci.co.uk/news/health/rss.xml", name: "BBC" },
+    { url: "https://abcnews.go.com/abcnews/healthheadlines", name: "ABC News" },
   ],
   sports: [
     { url: "https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml", name: "NY Times" },
     { url: "https://feeds.bbci.co.uk/sport/rss.xml", name: "BBC Sport" },
     { url: "https://www.theguardian.com/sport/rss", name: "The Guardian" },
     { url: "https://feeds.npr.org/1055/rss.xml", name: "NPR" },
+    { url: "https://www.espn.com/espn/rss/news", name: "ESPN" },
   ],
   entertainment: [
     { url: "https://rss.nytimes.com/services/xml/rss/nyt/Movies.xml", name: "NY Times" },
     { url: "https://www.theguardian.com/culture/rss", name: "The Guardian" },
     { url: "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml", name: "BBC" },
     { url: "https://feeds.npr.org/1048/rss.xml", name: "NPR" },
+    { url: "https://variety.com/feed/", name: "Variety" },
   ],
   food: [
     { url: "https://rss.nytimes.com/services/xml/rss/nyt/DiningandWine.xml", name: "NY Times" },
@@ -195,6 +208,9 @@ let notificationsEnabled = localStorage.getItem("tdb_notif") === "true";
 let lastArticleIds = JSON.parse(localStorage.getItem("tdb_last_ids") || "[]");
 let ttsSpeed = parseFloat(localStorage.getItem("tdb_tts_speed") || "0.9");
 let ttsVoiceIdx = parseInt(localStorage.getItem("tdb_tts_voice") || "0");
+let ttsVolume = parseFloat(localStorage.getItem("tdb_tts_volume") || "1");
+let ttsAccent = localStorage.getItem("tdb_tts_accent") || "regular";
+let ttsPaused = false;
 let shareArticle = null;
 
 // === Reading streak ===
@@ -886,6 +902,8 @@ function handleShare(platform) {
   const title = encodeURIComponent(shareArticle.title);
   const urls = {
     twitter: `https://twitter.com/intent/tweet?text=${title}&url=${url}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
     reddit: `https://reddit.com/submit?url=${url}&title=${title}`,
     whatsapp: `https://wa.me/?text=${title}%20${url}`,
     email: `mailto:?subject=${title}&body=Check out this article: ${url}`,
@@ -984,8 +1002,8 @@ function closeModal() {
   document.body.classList.remove("focus-mode");
   const mc = $("#modal-content");
   mc.onscroll = null;
-  const ttsCtrl = $("#tts-controls");
-  if (ttsCtrl) ttsCtrl.style.display = "none";
+  const ttsPanel = $("#tts-panel");
+  if (ttsPanel) ttsPanel.style.display = "none";
 }
 
 // === Related Articles ===
@@ -1039,47 +1057,137 @@ function trapFocus(el) {
   });
 }
 
-// === TTS ===
+// === TTS with Accent Support ===
+const ACCENT_MAP = {
+  "regular": ["en-US", "en_US"],
+  "british": ["en-GB", "en_GB", "en-UK"],
+  "indian": ["en-IN", "en_IN", "hi-IN"],
+  "australian": ["en-AU", "en_AU"],
+  "irish": ["en-IE", "en_IE"],
+  "scottish": ["en-GB-SCT", "en-SC", "en_GB"],
+  "south-african": ["en-ZA", "en_ZA"],
+};
+
+function getVoicesForAccent(accent) {
+  const voices = speechSynthesis.getVoices();
+  const langCodes = ACCENT_MAP[accent] || ACCENT_MAP["regular"];
+  let filtered = voices.filter(v => langCodes.some(code => v.lang.startsWith(code.split("-")[0]) && v.lang.includes(code.split("-")[1] || "")));
+  // Fallback: if accent not found, try broader English match
+  if (filtered.length === 0) {
+    filtered = voices.filter(v => v.lang.startsWith("en"));
+  }
+  // For Scottish, try to find voices with "Scottish" in name
+  if (accent === "scottish") {
+    const scottish = voices.filter(v => v.name.toLowerCase().includes("scot"));
+    if (scottish.length > 0) filtered = scottish;
+  }
+  // For Indian, also check for Hindi voices or "Indian" in name
+  if (accent === "indian") {
+    const indian = voices.filter(v => v.name.toLowerCase().includes("indian") || v.lang === "en-IN" || v.lang === "hi-IN");
+    if (indian.length > 0) filtered = [...new Set([...indian, ...filtered])];
+  }
+  return filtered.length > 0 ? filtered : voices.filter(v => v.lang.startsWith("en")).slice(0, 5);
+}
+
 function populateTTSVoices() {
   function fill() {
     const voices = speechSynthesis.getVoices();
-    const sel = $("#tts-voice");
-    if (!sel || voices.length === 0) return;
-    sel.innerHTML = voices.map((v, i) => `<option value="${i}">${v.name} (${v.lang})</option>`).join("");
-    if (ttsVoiceIdx < voices.length) sel.value = ttsVoiceIdx;
+    if (voices.length === 0) return;
+    // Set accent dropdown
+    const accentSel = $("#tts-accent");
+    if (accentSel) accentSel.value = ttsAccent;
+    updateVoiceDropdown();
   }
   fill();
   speechSynthesis.onvoiceschanged = fill;
 }
 
+function updateVoiceDropdown() {
+  const sel = $("#tts-voice");
+  if (!sel) return;
+  const voices = getVoicesForAccent(ttsAccent);
+  sel.innerHTML = voices.map((v, i) => {
+    const allVoices = speechSynthesis.getVoices();
+    const realIdx = allVoices.indexOf(v);
+    return `<option value="${realIdx}">${v.name}</option>`;
+  }).join("");
+  // Try to restore saved voice
+  const allVoices = speechSynthesis.getVoices();
+  if (ttsVoiceIdx < allVoices.length) {
+    const found = voices.includes(allVoices[ttsVoiceIdx]);
+    if (found) sel.value = ttsVoiceIdx;
+    else if (voices.length > 0) {
+      ttsVoiceIdx = speechSynthesis.getVoices().indexOf(voices[0]);
+      sel.value = ttsVoiceIdx;
+    }
+  }
+}
+
 function toggleTTS() {
   if (!currentModalArticle) return;
-  if (speechSynthesis.speaking) {
-    stopTTS();
-    $("#modal-tts").classList.remove("active");
-    const ttsCtrl = $("#tts-controls");
-    if (ttsCtrl) ttsCtrl.style.display = "none";
-    toast("Stopped reading");
+  const panel = $("#tts-panel");
+
+  if (speechSynthesis.speaking && !ttsPaused) {
+    // Pause
+    speechSynthesis.pause();
+    ttsPaused = true;
+    updateTTSButtons();
     return;
   }
-  // Show TTS controls
-  const ttsCtrl = $("#tts-controls");
-  if (ttsCtrl) ttsCtrl.style.display = "flex";
+
+  if (ttsPaused) {
+    // Resume
+    speechSynthesis.resume();
+    ttsPaused = false;
+    updateTTSButtons();
+    return;
+  }
+
+  // Start new speech
+  if (panel) panel.style.display = "block";
+  startTTS();
+}
+
+function startTTS() {
+  stopTTS();
+  if (!currentModalArticle) return;
 
   const u = new SpeechSynthesisUtterance(currentModalArticle.title + ". " + currentModalArticle.excerpt);
   u.rate = ttsSpeed;
+  u.volume = ttsVolume;
   const voices = speechSynthesis.getVoices();
   if (voices[ttsVoiceIdx]) u.voice = voices[ttsVoiceIdx];
   u.onend = () => {
+    ttsPaused = false;
+    updateTTSButtons();
+    const panel = $("#tts-panel");
+    if (panel) panel.style.display = "none";
     $("#modal-tts").classList.remove("active");
-    if (ttsCtrl) ttsCtrl.style.display = "none";
   };
   speechSynthesis.speak(u);
   $("#modal-tts").classList.add("active");
+  updateTTSButtons();
   toast("Reading aloud...");
 }
 
-function stopTTS() { speechSynthesis.cancel(); }
+function stopTTS() {
+  speechSynthesis.cancel();
+  ttsPaused = false;
+  updateTTSButtons();
+}
+
+function updateTTSButtons() {
+  const playPause = $("#tts-play-pause");
+  if (playPause) {
+    if (speechSynthesis.speaking && !ttsPaused) {
+      playPause.innerHTML = "&#10074;&#10074;"; // pause icon
+      playPause.classList.add("active");
+    } else {
+      playPause.innerHTML = "&#9654;&#65039;"; // play icon
+      playPause.classList.remove("active");
+    }
+  }
+}
 
 // === Bookmarks ===
 function toggleBookmark(link) {
@@ -1450,7 +1558,20 @@ function setupListeners() {
   $("#modal-focus").addEventListener("click", toggleFocusMode);
   $("#modal-print").addEventListener("click", () => window.print());
 
-  // TTS controls
+  // TTS panel controls
+  const ttsAccentEl = $("#tts-accent");
+  if (ttsAccentEl) {
+    ttsAccentEl.addEventListener("change", () => {
+      ttsAccent = ttsAccentEl.value;
+      localStorage.setItem("tdb_tts_accent", ttsAccent);
+      updateVoiceDropdown();
+      // If currently playing, restart with new accent
+      if (speechSynthesis.speaking) {
+        stopTTS();
+        startTTS();
+      }
+    });
+  }
   const ttsSpeedEl = $("#tts-speed");
   if (ttsSpeedEl) {
     ttsSpeedEl.addEventListener("input", () => {
@@ -1460,11 +1581,44 @@ function setupListeners() {
       localStorage.setItem("tdb_tts_speed", ttsSpeed);
     });
   }
+  const ttsVolumeEl = $("#tts-volume");
+  if (ttsVolumeEl) {
+    ttsVolumeEl.addEventListener("input", () => {
+      ttsVolume = parseFloat(ttsVolumeEl.value);
+      const val = $("#tts-volume-val");
+      if (val) val.textContent = Math.round(ttsVolume * 100) + "%";
+      localStorage.setItem("tdb_tts_volume", ttsVolume);
+    });
+  }
   const ttsVoiceEl = $("#tts-voice");
   if (ttsVoiceEl) {
     ttsVoiceEl.addEventListener("change", () => {
       ttsVoiceIdx = parseInt(ttsVoiceEl.value);
       localStorage.setItem("tdb_tts_voice", ttsVoiceIdx);
+    });
+  }
+  const ttsPlayPause = $("#tts-play-pause");
+  if (ttsPlayPause) {
+    ttsPlayPause.addEventListener("click", () => {
+      if (speechSynthesis.speaking && !ttsPaused) {
+        speechSynthesis.pause();
+        ttsPaused = true;
+      } else if (ttsPaused) {
+        speechSynthesis.resume();
+        ttsPaused = false;
+      } else {
+        startTTS();
+      }
+      updateTTSButtons();
+    });
+  }
+  const ttsStopBtn = $("#tts-stop");
+  if (ttsStopBtn) {
+    ttsStopBtn.addEventListener("click", () => {
+      stopTTS();
+      const panel = $("#tts-panel");
+      if (panel) panel.style.display = "none";
+      $("#modal-tts").classList.remove("active");
     });
   }
 
@@ -1482,9 +1636,14 @@ function setupListeners() {
   $("#sidebar-close").addEventListener("click", closeSidebar);
   $("#sidebar-overlay").addEventListener("click", closeSidebar);
 
-  // Back to top
+  // Back to top + global progress
   window.addEventListener("scroll", () => {
     $("#back-to-top").classList.toggle("visible", window.scrollY > 400);
+    // Global reading progress
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = docHeight > 0 ? (window.scrollY / docHeight) * 100 : 0;
+    const gp = $("#global-progress");
+    if (gp) gp.style.width = progress + "%";
   }, { passive: true });
   $("#back-to-top").addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 
